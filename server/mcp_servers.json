@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "time": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["C:\\Users\\HONOR\\Documents\\trae work09\\jarvis\\server\\mcp_servers\\time_server.py"],
+      "enabled": true
+    },
+    "filesystem": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\HONOR\\Documents"],
+      "enabled": false
+    }
+  }
+}

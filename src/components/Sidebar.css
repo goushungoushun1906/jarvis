@@ -1,0 +1,39 @@
+.sidebar-settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(0, 212, 255, 0.08);
+  color: #00d4ff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-settings-btn:hover {
+  background: rgba(0, 212, 255, 0.18);
+  border-color: rgba(0, 212, 255, 0.45);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+}
+
+.sidebar.collapsed .sidebar-settings-btn {
+  padding: 10px 0;
+}
+
+.sidebar.collapsed .sidebar-settings-label,
+.sidebar.collapsed .collapse-btn-label,
+.sidebar.collapsed .new-chat-label {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-settings-btn svg,
+.sidebar.collapsed .collapse-btn svg,
+.sidebar.collapsed .new-chat-btn svg {
+  margin: 0;
+}

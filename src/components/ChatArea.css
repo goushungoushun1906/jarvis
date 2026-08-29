@@ -1,0 +1,42 @@
+.header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8a9bb8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.header-btn:hover {
+  background: rgba(0, 212, 255, 0.12);
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.25);
+}
+
+.header-btn.active {
+  background: rgba(0, 212, 255, 0.18);
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.12);
+}
+
+.header-btn-settings {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+}
+
+.header-btn-settings:hover {
+  background: rgba(0, 212, 255, 0.18);
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.18);
+}
+
+.header-btn-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+}

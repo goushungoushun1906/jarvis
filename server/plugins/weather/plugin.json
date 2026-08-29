@@ -1,0 +1,45 @@
+{
+  "name": "weather",
+  "version": "1.0.0",
+  "description": "Get current weather information for any city. Demonstrates the JARVIS plugin system with mock data.",
+  "author": "JARVIS Team",
+  "commands": [
+    {
+      "name": "get_weather",
+      "description": "Get the current weather for a specified city. Returns temperature, conditions, humidity, and wind speed.",
+      "handler_name": "get_weather",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "The city name to get weather for, e.g. 'Beijing', 'London', 'Tokyo'"
+          },
+          "units": {
+            "type": "string",
+            "enum": ["celsius", "fahrenheit"],
+            "description": "Temperature unit. Defaults to 'celsius'."
+          }
+        },
+        "required": ["city"]
+      }
+    }
+  ],
+  "config": [
+    {
+      "key": "default_city",
+      "label": "Default City",
+      "type": "string",
+      "default": "Beijing",
+      "description": "Default city used when no city is specified."
+    },
+    {
+      "key": "default_units",
+      "label": "Default Units",
+      "type": "select",
+      "default": "celsius",
+      "description": "Default temperature unit.",
+      "options": ["celsius", "fahrenheit"]
+    }
+  ]
+}

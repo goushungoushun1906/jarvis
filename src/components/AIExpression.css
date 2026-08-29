@@ -1,0 +1,577 @@
+/* ====== AI Expression Component ====== */
+.ai-expression {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-expression.compact {
+  width: 80px;
+  height: 80px;
+}
+
+/* ====== Outer Glow ====== */
+.exp-outer-glow {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.15) 0%,
+    rgba(59, 130, 246, 0.05) 40%,
+    transparent 70%
+  );
+  animation: glowPulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* State colors */
+.listening .exp-outer-glow {
+  background: radial-gradient(
+    circle,
+    rgba(34, 211, 238, 0.25) 0%,
+    rgba(34, 211, 238, 0.08) 40%,
+    transparent 70%
+  );
+  animation-duration: 2s;
+}
+.thinking .exp-outer-glow {
+  background: radial-gradient(
+    circle,
+    rgba(139, 92, 246, 0.25) 0%,
+    rgba(139, 92, 246, 0.08) 40%,
+    transparent 70%
+  );
+  animation-duration: 1.5s;
+}
+.speaking .exp-outer-glow {
+  background: radial-gradient(
+    circle,
+    rgba(34, 211, 238, 0.2) 0%,
+    rgba(59, 130, 246, 0.1) 40%,
+    transparent 70%
+  );
+  animation-duration: 1s;
+}
+.error .exp-outer-glow {
+  background: radial-gradient(
+    circle,
+    rgba(239, 68, 68, 0.3) 0%,
+    rgba(239, 68, 68, 0.1) 40%,
+    transparent 70%
+  );
+  animation: errorFlicker 0.3s ease-in-out infinite;
+}
+.offline .exp-outer-glow {
+  background: radial-gradient(
+    circle,
+    rgba(71, 85, 105, 0.1) 0%,
+    transparent 60%
+  );
+  animation: none;
+}
+
+/* ====== Ring System ====== */
+.exp-rings {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exp-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  transition: border-color 0.5s ease;
+}
+
+.ring-1 {
+  width: 80%;
+  height: 80%;
+  animation: ringRotateCW 20s linear infinite;
+  border-style: dashed;
+  border-width: 1px;
+}
+.ring-2 {
+  width: 65%;
+  height: 65%;
+  animation: ringRotateCCW 15s linear infinite;
+  border-color: rgba(96, 165, 250, 0.2);
+}
+.ring-3 {
+  width: 50%;
+  height: 50%;
+  animation: ringRotateCW 10s linear infinite;
+  border-color: rgba(139, 92, 246, 0.2);
+  border-style: dotted;
+}
+.ring-4 {
+  width: 90%;
+  height: 90%;
+  animation: ringRotateCCW 30s linear infinite;
+  border-color: rgba(59, 130, 246, 0.08);
+  border-width: 2px;
+  border-style: dashed;
+}
+
+/* Ring state variants */
+.listening .ring-1 { border-color: rgba(34, 211, 238, 0.4); animation-duration: 8s; }
+.listening .ring-2 { border-color: rgba(34, 211, 238, 0.5); animation-duration: 5s; }
+.listening .ring-3 { border-color: rgba(34, 211, 238, 0.3); animation-duration: 3s; }
+.listening .ring-4 { border-color: rgba(34, 211, 238, 0.15); animation-duration: 12s; }
+
+.thinking .ring-1 { border-color: rgba(139, 92, 246, 0.5); animation-duration: 4s; }
+.thinking .ring-2 { border-color: rgba(167, 139, 250, 0.4); animation-duration: 3s; }
+.thinking .ring-3 { border-color: rgba(59, 130, 246, 0.5); animation-duration: 2s; }
+.thinking .ring-4 { border-color: rgba(139, 92, 246, 0.15); animation-duration: 8s; }
+
+.speaking .ring-1 { animation-duration: 6s; border-color: rgba(34, 211, 238, 0.35); }
+.speaking .ring-2 { animation-duration: 4s; border-color: rgba(59, 130, 246, 0.4); }
+.speaking .ring-3 { animation-duration: 2.5s; }
+
+.error .ring-1,
+.error .ring-2,
+.error .ring-3,
+.error .ring-4 {
+  border-color: rgba(239, 68, 68, 0.3);
+  animation-duration: 1s;
+}
+
+.offline .ring-1,
+.offline .ring-2,
+.offline .ring-3,
+.offline .ring-4 {
+  border-color: rgba(71, 85, 105, 0.1);
+  animation-duration: 60s;
+}
+
+/* ====== Core Eye ====== */
+.exp-core {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(59, 130, 246, 0.2) 0%,
+    rgba(15, 15, 46, 0.8) 60%,
+    rgba(10, 10, 26, 0.95) 100%
+  );
+  box-shadow:
+    0 0 30px rgba(59, 130, 246, 0.3),
+    0 0 60px rgba(59, 130, 246, 0.1),
+    inset 0 0 20px rgba(59, 130, 246, 0.15);
+  animation: coreBreathe 4s ease-in-out infinite;
+  overflow: hidden;
+}
+
+.compact .exp-core {
+  width: 36px;
+  height: 36px;
+}
+
+.exp-core-inner {
+  position: absolute;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  border: 2px solid rgba(96, 165, 250, 0.4);
+  animation: coreInnerSpin 8s linear infinite;
+}
+
+.exp-core-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #60a5fa;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.8), 0 0 30px rgba(96, 165, 250, 0.4);
+  z-index: 2;
+  animation: dotPulse 3s ease-in-out infinite;
+}
+
+.compact .exp-core-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.exp-scan-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.6) 50%,
+    transparent 100%
+  );
+  animation: scanLine 3s ease-in-out infinite;
+}
+
+/* Core state variants */
+.listening .exp-core {
+  box-shadow:
+    0 0 40px rgba(34, 211, 238, 0.4),
+    0 0 80px rgba(34, 211, 238, 0.15),
+    inset 0 0 20px rgba(34, 211, 238, 0.2);
+  animation-duration: 2s;
+}
+.listening .exp-core-dot {
+  background: #22d3ee;
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.9), 0 0 40px rgba(34, 211, 238, 0.5);
+  animation-duration: 1s;
+}
+
+.thinking .exp-core {
+  box-shadow:
+    0 0 40px rgba(139, 92, 246, 0.5),
+    0 0 80px rgba(139, 92, 246, 0.2),
+    inset 0 0 25px rgba(139, 92, 246, 0.25);
+  animation-duration: 1.5s;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(139, 92, 246, 0.3) 0%,
+    rgba(15, 15, 46, 0.85) 60%,
+    rgba(10, 10, 26, 0.95) 100%
+  );
+}
+.thinking .exp-core-dot {
+  background: #a78bfa;
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.9), 0 0 40px rgba(139, 92, 246, 0.5);
+  animation-duration: 0.8s;
+}
+.thinking .exp-core-inner { animation-duration: 2s; }
+.thinking .exp-scan-line { animation-duration: 1s; }
+
+.speaking .exp-core {
+  box-shadow:
+    0 0 30px rgba(34, 211, 238, 0.35),
+    0 0 60px rgba(59, 130, 246, 0.15),
+    inset 0 0 20px rgba(34, 211, 238, 0.15);
+  animation-duration: 1s;
+}
+
+.error .exp-core {
+  box-shadow:
+    0 0 30px rgba(239, 68, 68, 0.5),
+    inset 0 0 15px rgba(239, 68, 68, 0.2);
+  animation: errorFlicker 0.3s ease-in-out infinite;
+}
+.error .exp-core-dot {
+  background: #ef4444;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.9);
+}
+
+.offline .exp-core {
+  box-shadow: 0 0 10px rgba(71, 85, 105, 0.2), inset 0 0 10px rgba(71, 85, 105, 0.1);
+  animation: none;
+  background: radial-gradient(
+    circle,
+    rgba(71, 85, 105, 0.15) 0%,
+    rgba(10, 10, 26, 0.95) 70%
+  );
+}
+.offline .exp-core-dot {
+  background: #475569;
+  box-shadow: none;
+  animation: none;
+}
+.offline .exp-core-inner { animation: none; border-color: rgba(71, 85, 105, 0.2); }
+.offline .exp-scan-line { animation: none; opacity: 0; }
+
+/* ====== Face Arcs — expression curves ====== */
+.exp-face {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compact .exp-face {
+  width: 50px;
+  height: 50px;
+}
+
+.exp-face-arc {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: border-color 0.5s ease, transform 0.5s ease;
+}
+
+.arc-left {
+  width: 30px;
+  height: 30px;
+  top: 15px;
+  left: 20px;
+  border-bottom-color: rgba(96, 165, 250, 0.5);
+  border-left-color: rgba(96, 165, 250, 0.5);
+  transform: rotate(-30deg);
+}
+.arc-right {
+  width: 30px;
+  height: 30px;
+  top: 15px;
+  right: 20px;
+  border-bottom-color: rgba(96, 165, 250, 0.5);
+  border-right-color: rgba(96, 165, 250, 0.5);
+  transform: rotate(30deg);
+}
+.arc-bottom {
+  width: 50px;
+  height: 25px;
+  bottom: 20px;
+  border-bottom-color: rgba(59, 130, 246, 0.4);
+  border-left-color: rgba(59, 130, 246, 0.3);
+  border-right-color: rgba(59, 130, 246, 0.3);
+  transition: height 0.3s ease, width 0.3s ease;
+}
+
+/* Face state expressions */
+.listening .arc-left,
+.listening .arc-right {
+  border-color: rgba(34, 211, 238, 0.7);
+  transform: scale(1.1);
+}
+.listening .arc-bottom {
+  width: 40px;
+  height: 35px;
+  border-color: rgba(34, 211, 238, 0.5);
+}
+
+.thinking .arc-left,
+.thinking .arc-right {
+  border-color: rgba(139, 92, 246, 0.6);
+}
+.thinking .arc-bottom {
+  width: 30px;
+  height: 15px;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.speaking .arc-bottom {
+  animation: mouthMove 0.4s ease-in-out infinite alternate;
+  border-color: rgba(34, 211, 238, 0.5);
+}
+.speaking .arc-left,
+.speaking .arc-right {
+  border-color: rgba(34, 211, 238, 0.6);
+}
+
+.error .arc-left,
+.error .arc-right,
+.error .arc-bottom {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.offline .arc-left,
+.offline .arc-right,
+.offline .arc-bottom {
+  border-color: rgba(71, 85, 105, 0.15);
+}
+
+/* ====== Wave Equalizer ====== */
+.exp-wave {
+  position: absolute;
+  bottom: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 30px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.compact .exp-wave { display: none; }
+
+.exp-wave-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to top, #3b82f6, #22d3ee);
+  animation: waveBar 0.6s ease-in-out infinite alternate;
+  animation-delay: var(--bar-delay);
+}
+
+/* Show wave when speaking or listening */
+.speaking .exp-wave,
+.listening .exp-wave {
+  opacity: 1;
+}
+
+.speaking .exp-wave-bar {
+  animation-duration: 0.3s;
+}
+
+.listening .exp-wave-bar {
+  height: 10px;
+  animation-duration: 0.8s;
+}
+
+.thinking .exp-wave { opacity: 0.5; }
+.thinking .exp-wave-bar {
+  animation-duration: 0.5s;
+  background: linear-gradient(to top, #8b5cf6, #a78bfa);
+}
+
+/* ====== Particles ====== */
+.exp-particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.exp-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--p-size);
+  height: var(--p-size);
+  border-radius: 50%;
+  background: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 0 4px rgba(96, 165, 250, 0.4);
+  animation: particleOrbit 6s linear infinite;
+  animation-delay: var(--p-delay);
+}
+
+.compact .exp-particles { display: none; }
+
+/* Particle state variants */
+.listening .exp-particle {
+  background: rgba(34, 211, 238, 0.7);
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.5);
+  animation-duration: 3s;
+}
+.thinking .exp-particle {
+  background: rgba(167, 139, 250, 0.7);
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.5);
+  animation-duration: 2s;
+}
+.speaking .exp-particle {
+  animation-duration: 4s;
+}
+.error .exp-particle {
+  background: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.3);
+  animation-duration: 1s;
+}
+.offline .exp-particle {
+  background: rgba(71, 85, 105, 0.2);
+  box-shadow: none;
+  animation-duration: 20s;
+}
+
+/* ====== Status Text ====== */
+.exp-status {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(96, 165, 250, 0.6);
+  white-space: nowrap;
+  animation: statusFade 3s ease-in-out infinite;
+}
+
+.listening .exp-status { color: rgba(34, 211, 238, 0.7); animation-duration: 1.5s; }
+.thinking .exp-status { color: rgba(167, 139, 250, 0.7); animation-duration: 1s; }
+.speaking .exp-status { color: rgba(34, 211, 238, 0.6); }
+.error .exp-status { color: rgba(239, 68, 68, 0.7); animation: errorFlicker 0.5s infinite; }
+.offline .exp-status { color: rgba(71, 85, 105, 0.4); animation: none; }
+
+/* ====== Animations ====== */
+@keyframes glowPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.7; }
+}
+
+@keyframes ringRotateCW {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ringRotateCCW {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes coreBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes coreInnerSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.7); opacity: 0.6; }
+}
+
+@keyframes scanLine {
+  0% { top: -10%; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 110%; opacity: 0; }
+}
+
+@keyframes waveBar {
+  0% { height: 4px; }
+  100% { height: 25px; }
+}
+
+@keyframes particleOrbit {
+  0% {
+    transform: rotate(var(--p-angle)) translateX(0px) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: rotate(var(--p-angle)) translateX(var(--p-dist)) scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: rotate(var(--p-angle)) translateX(var(--p-dist)) scale(1);
+  }
+  100% {
+    transform: rotate(var(--p-angle)) translateX(calc(var(--p-dist) + 20px)) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes mouthMove {
+  0% { height: 15px; width: 30px; }
+  100% { height: 35px; width: 50px; }
+}
+
+@keyframes statusFade {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes errorFlicker {
+  0%, 100% { opacity: 1; }
+  25% { opacity: 0.3; }
+  50% { opacity: 0.9; }
+  75% { opacity: 0.4; }
+}

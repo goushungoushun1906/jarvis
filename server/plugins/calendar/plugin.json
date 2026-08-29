@@ -1,0 +1,105 @@
+{
+  "name": "calendar",
+  "version": "1.0.0",
+  "description": "Calendar management plugin. Provides event listing, creation, and search capabilities.",
+  "author": "JARVIS Team",
+  "commands": [
+    {
+      "name": "list_events",
+      "description": "List calendar events for a given date range. Returns upcoming and past events.",
+      "handler_name": "list_events",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string",
+            "description": "Start date in YYYY-MM-DD format. Defaults to today."
+          },
+          "end_date": {
+            "type": "string",
+            "description": "End date in YYYY-MM-DD format. Defaults to start_date."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of events to return. Default 20."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "create_event",
+      "description": "Create a new calendar event with title, date, time, and optional attendees.",
+      "handler_name": "create_event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Event title, e.g. 'Team meeting'"
+          },
+          "date": {
+            "type": "string",
+            "description": "Event date in YYYY-MM-DD format"
+          },
+          "start_time": {
+            "type": "string",
+            "description": "Start time in HH:MM format, e.g. '09:00'"
+          },
+          "end_time": {
+            "type": "string",
+            "description": "End time in HH:MM format, e.g. '10:00'"
+          },
+          "attendees": {
+            "type": "string",
+            "description": "Comma-separated list of attendee names or emails"
+          },
+          "location": {
+            "type": "string",
+            "description": "Event location or meeting room"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes or description"
+          }
+        },
+        "required": ["title", "date"]
+      }
+    },
+    {
+      "name": "search_events",
+      "description": "Search calendar events by keyword. Returns matching events with details.",
+      "handler_name": "search_events",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "description": "Search keyword to match against event titles, locations, and notes"
+          },
+          "date_range": {
+            "type": "string",
+            "description": "Optional date range filter, e.g. 'today', 'this week', 'next week', '2026-06-28'"
+          }
+        },
+        "required": ["keyword"]
+      }
+    }
+  ],
+  "config": [
+    {
+      "key": "default_timezone",
+      "label": "Default Timezone",
+      "type": "string",
+      "default": "Asia/Shanghai",
+      "description": "Default timezone for events."
+    },
+    {
+      "key": "events_per_page",
+      "label": "Events Per Page",
+      "type": "number",
+      "default": 20,
+      "description": "Maximum events returned per query."
+    }
+  ]
+}

@@ -1,0 +1,791 @@
+{
+  "page_width": 7560310,
+  "page_height": 10692130,
+  "left_margin": 1080135,
+  "right_margin": 720090,
+  "top_margin": 900430,
+  "bottom_margin": 900430,
+  "header_distance": 540385,
+  "footer_distance": 612140,
+  "paragraphs": [
+    {
+      "text": "人工智能在医疗诊断中的应用与分析",
+      "style": "书写正文",
+      "alignment": "CENTER (1)",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "黑体",
+      "size": "228600",
+      "bold": "",
+      "eastAsia_font": "黑体",
+      "ascii_font": "黑体",
+      "hAnsi_font": "黑体"
+    },
+    {
+      "text": "——副标题（若有）",
+      "style": "书写正文",
+      "alignment": "CENTER (1)",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "楷体",
+      "size": "203200",
+      "bold": "",
+      "eastAsia_font": "楷体",
+      "ascii_font": "楷体",
+      "hAnsi_font": "楷体"
+    },
+    {
+      "text": "作者名",
+      "style": "书写正文",
+      "alignment": "CENTER (1)",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "楷体",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "楷体",
+      "ascii_font": "楷体",
+      "hAnsi_font": "楷体"
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "摘要：本文探讨了人工智能在医疗诊断中的应用及其面临的挑战。通过文献综述和实证分析，本文研究了人工智能技术的最新进展，并分析了其在实际医疗环境中的优势和局限性。研究发现，虽然人工智能在医疗诊断中表现出巨",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "306070"
+      },
+      "font": "黑体",
+      "size": "",
+      "bold": "True",
+      "eastAsia_font": "黑体",
+      "ascii_font": "黑体",
+      "hAnsi_font": "黑体"
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "关键词：人工智能；医疗诊断；深度学习",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "306070"
+      },
+      "font": "黑体",
+      "size": "",
+      "bold": "True",
+      "eastAsia_font": "黑体",
+      "ascii_font": "黑体",
+      "hAnsi_font": "黑体"
+    },
+    {
+      "text": "",
+      "style": "Normal",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": ""
+    },
+    {
+      "text": "人工智能在医疗诊断中的应用与分析",
+      "style": "Title",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "黑体",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "黑体",
+      "ascii_font": "黑体",
+      "hAnsi_font": "黑体"
+    },
+    {
+      "text": "——副标题（若有）",
+      "style": "Subtitle",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "引言",
+      "style": "Heading 1",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "研究背景",
+      "style": "Heading 2",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "随着科技的飞速发展，人工智能已广泛应用于各个领域，其中医疗领域尤其引人关注。医疗诊断作为医疗服务的重要环节，其准确性和效率对于患者的治疗效果至关重要。近年来，人工智能技术在医疗诊断中的应用取得了显著进",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "研究目的",
+      "style": "Heading 2",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "本文旨在全面分析人工智能在医疗诊断中的应用现状，深入探讨其面临的挑战，为未来的研究和实践提供借鉴和指导。",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "研究方法",
+      "style": "Heading 2",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "-367030"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "本文采用文献综述和实证分析相结合的方法，通过收集和分析相关文献，了解人工智能在医疗诊断中的最新进展和应用实例，并结合实际案例，深入剖析其面临的挑战和问题。",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "核心技术原理",
+      "style": "Heading 1",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "",
+      "style": "Heading 2",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      }
+    },
+    {
+      "text": "模型示意图如图1所示。",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "",
+      "style": "图片段落",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": ""
+    },
+    {
+      "text": "图1 通用的CNN模型示意图",
+      "style": "Caption",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "",
+      "style": "Normal",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      }
+    },
+    {
+      "text": "",
+      "style": "Normal",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      }
+    },
+    {
+      "text": "",
+      "style": "Normal",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      }
+    },
+    {
+      "text": "",
+      "style": "Heading 2",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      }
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "数据集",
+      "style": "Heading 1",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "数据来源",
+      "style": "Heading 2",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "数据来源于XXX……",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "数据说明",
+      "style": "Heading 2",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "相关数据的字段说明如表1所示。",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "表1 数据说明",
+      "style": "Caption",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      }
+    },
+    {
+      "text": "数据预处理",
+      "style": "Heading 1",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "数据清洗",
+      "style": "Heading 2",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "三级标题",
+      "style": "Heading 3",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "四级标题",
+      "style": "Heading 4",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "缺失值处理（五级标题）",
+      "style": "Heading 5",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "①缺失值检测",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "②缺失值处理策略",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "异常值处理",
+      "style": "Heading 5",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": ""
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    },
+    {
+      "text": "①异常值识别方法",
+      "style": "书写正文",
+      "alignment": "",
+      "paragraph_format": {
+        "line_spacing": "",
+        "space_before": "",
+        "space_after": "",
+        "first_line_indent": "304800"
+      },
+      "font": "",
+      "size": "",
+      "bold": "",
+      "eastAsia_font": "",
+      "ascii_font": "",
+      "hAnsi_font": ""
+    }
+  ],
+  "table_count": 1,
+  "sections_detail": [
+    {
+      "index": 0,
+      "header_text": [
+        ""
+      ]
+    }
+  ]
+}

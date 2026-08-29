@@ -1,0 +1,75 @@
+{
+  "name": "system_monitor",
+  "version": "1.0.0",
+  "description": "System resource monitoring plugin. Checks CPU, memory, disk usage, and running processes.",
+  "author": "JARVIS Team",
+  "commands": [
+    {
+      "name": "get_cpu_usage",
+      "description": "Get current CPU usage percentage and load averages.",
+      "handler_name": "get_cpu_usage",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_memory_usage",
+      "description": "Get current memory usage (used, free, total).",
+      "handler_name": "get_memory_usage",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_disk_usage",
+      "description": "Get disk usage for a specified path.",
+      "handler_name": "get_disk_usage",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Disk path to check, e.g. 'C:\\' or '/'",
+            "default": "C:\\"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "list_processes",
+      "description": "List top running processes by CPU or memory.",
+      "handler_name": "list_processes",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sort_by": {
+            "type": "string",
+            "enum": ["cpu", "memory"],
+            "description": "Sort by cpu or memory",
+            "default": "cpu"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Number of processes to show",
+            "default": 10
+          }
+        },
+        "required": []
+      }
+    }
+  ],
+  "config": [
+    {
+      "key": "default_refresh_interval",
+      "label": "Refresh Interval",
+      "type": "number",
+      "default": 5,
+      "description": "Refresh interval in seconds"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "name": "clipboard",
+  "version": "1.0.0",
+  "description": "Clipboard history management plugin. Let users read, write, and manage clipboard history entries.",
+  "author": "JARVIS Team",
+  "commands": [
+    {
+      "name": "get_clipboard",
+      "description": "Get the current or most recent clipboard content.",
+      "handler_name": "get_clipboard",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "set_clipboard",
+      "description": "Set clipboard content with an optional label to identify this entry.",
+      "handler_name": "set_clipboard",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Content to set as clipboard text"
+          },
+          "label": {
+            "type": "string",
+            "description": "Optional label to identify this entry"
+          }
+        },
+        "required": ["content"]
+      }
+    },
+    {
+      "name": "list_history",
+      "description": "List clipboard history entries.",
+      "handler_name": "list_history",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Max entries to return",
+            "default": 10
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "clear_history",
+      "description": "Clear all clipboard history entries.",
+      "handler_name": "clear_history",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "search_history",
+      "description": "Search clipboard history by keyword.",
+      "handler_name": "search_history",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "description": "Search keyword to match against content and labels"
+          }
+        },
+        "required": ["keyword"]
+      }
+    }
+  ],
+  "config": [
+    {
+      "key": "max_history_size",
+      "label": "Max History Size",
+      "type": "number",
+      "default": 50,
+      "description": "Maximum clipboard history entries to keep"
+    }
+  ]
+}

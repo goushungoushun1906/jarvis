@@ -1,0 +1,101 @@
+{
+  "name": "reminder",
+  "version": "1.0.0",
+  "description": "Reminder and to-do management plugin. Create, list, complete, and search reminders.",
+  "author": "JARVIS Team",
+  "commands": [
+    {
+      "name": "add_reminder",
+      "description": "Add a new reminder or to-do item with a title and optional due date/time.",
+      "handler_name": "add_reminder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Reminder title, e.g. 'Submit report by Friday'"
+          },
+          "due_date": {
+            "type": "string",
+            "description": "Due date in YYYY-MM-DD format"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Priority level. Default: medium"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category tag, e.g. 'work', 'personal', 'health'"
+          }
+        },
+        "required": ["title"]
+      }
+    },
+    {
+      "name": "list_reminders",
+      "description": "List all reminders, optionally filtered by status, priority, or category.",
+      "handler_name": "list_reminders",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "completed", "all"],
+            "description": "Filter by status. Default: pending"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "all"],
+            "description": "Filter by priority. Default: all"
+          },
+          "category": {
+            "type": "string",
+            "description": "Filter by category tag"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "complete_reminder",
+      "description": "Mark a reminder as completed by its ID.",
+      "handler_name": "complete_reminder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Reminder ID to mark as completed"
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "delete_reminder",
+      "description": "Delete a reminder by its ID.",
+      "handler_name": "delete_reminder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Reminder ID to delete"
+          }
+        },
+        "required": ["id"]
+      }
+    }
+  ],
+  "config": [
+    {
+      "key": "default_priority",
+      "label": "Default Priority",
+      "type": "select",
+      "default": "medium",
+      "options": ["low", "medium", "high"],
+      "description": "Default priority for new reminders."
+    }
+  ]
+}

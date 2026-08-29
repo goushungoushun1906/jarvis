@@ -1,0 +1,331 @@
+/* Make settings tabs fit the panel without text being cut off */
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+}
+
+.settings-tabs .tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 56px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted, #8a9bb8);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-tabs .tab-btn svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.settings-tabs .tab-btn:hover {
+  background: rgba(0, 212, 255, 0.08);
+  color: #00d4ff;
+}
+
+.settings-tabs .tab-btn.active {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.08);
+}
+
+/* ====== Cost Dashboard ====== */
+.cost-dashboard {
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(10, 14, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text, #c8d6e5);
+  font-size: 13px;
+}
+
+.cost-dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cost-dashboard-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright, #e8f0fe);
+}
+
+.cost-dashboard-subtitle {
+  font-size: 11px;
+  color: var(--text-muted, #8a9bb8);
+  margin-top: 2px;
+}
+
+.cost-range-select {
+  display: flex;
+  gap: 6px;
+}
+
+.cost-range-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted, #8a9bb8);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cost-range-btn:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+}
+
+.cost-range-btn.active {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.35);
+  color: #00d4ff;
+}
+
+.cost-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.cost-card {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.cost-card-label {
+  font-size: 11px;
+  color: var(--text-muted, #8a9bb8);
+  margin-bottom: 6px;
+}
+
+.cost-card-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-bright, #e8f0fe);
+}
+
+.cost-card-foot {
+  font-size: 11px;
+  color: var(--text-muted, #8a9bb8);
+  margin-top: 4px;
+}
+
+.cost-success {
+  color: #00ff88;
+}
+
+.cost-error {
+  color: #ff4444;
+}
+
+.cost-section {
+  margin-bottom: 20px;
+}
+
+.cost-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright, #e8f0fe);
+  margin-bottom: 10px;
+}
+
+.cost-model-list,
+.cost-day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cost-model-row,
+.cost-day-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.cost-model-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cost-model-name {
+  font-weight: 500;
+  color: var(--text-bright, #e8f0fe);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cost-model-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted, #8a9bb8);
+}
+
+.cost-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.cost-model-stats {
+  display: flex;
+  gap: 16px;
+  text-align: right;
+}
+
+.cost-model-stat-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright, #e8f0fe);
+}
+
+.cost-model-stat-label {
+  font-size: 10px;
+  color: var(--text-muted, #8a9bb8);
+}
+
+.cost-day-label {
+  width: 70px;
+  font-size: 11px;
+  color: var(--text-muted, #8a9bb8);
+  flex-shrink: 0;
+}
+
+.cost-day-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cost-day-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00d4ff, #2563eb);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.cost-day-values {
+  width: 80px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-muted, #8a9bb8);
+  flex-shrink: 0;
+}
+
+.cost-day-cost {
+  margin-left: 6px;
+  color: var(--text-bright, #e8f0fe);
+  font-weight: 500;
+}
+
+.cost-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.cost-table th,
+.cost-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+}
+
+.cost-table th {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted, #8a9bb8);
+  font-weight: 600;
+}
+
+.cost-table-mono {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-bright, #e8f0fe);
+}
+
+.cost-row-failed {
+  background: rgba(255, 68, 68, 0.06);
+}
+
+.cost-loading,
+.cost-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted, #8a9bb8);
+  font-size: 13px;
+}
+
+.cost-status {
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cost-status-error {
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+}
+
+.cost-retry-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  background: transparent;
+  color: #ff4444;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cost-retry-btn:hover {
+  background: rgba(255, 68, 68, 0.1);
+}

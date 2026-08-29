@@ -1,0 +1,168 @@
+.jarvis-avatar-3d {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.jarvis-avatar-3d.compact {
+  width: 80px;
+  height: 80px;
+}
+.jarvis-avatar-3d canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.digital-human {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.digital-human.compact {
+  width: 80px;
+  height: 80px;
+}
+.digital-human canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ============================================================================
+   JARVIS Static Avatar Image (replaces 3D DigitalHuman)
+   ============================================================================ */
+
+.jarvis-avatar-img {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jarvis-avatar-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+  display: block;
+  transition: filter 0.8s ease, transform 0.8s ease;
+}
+
+/* Status ring - rotating border glow */
+.jarvis-avatar-img .avatar-status-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  border: 2px solid transparent;
+  pointer-events: none;
+  transition: border-color 0.6s ease;
+}
+
+/* Inner glow overlay */
+.jarvis-avatar-img .avatar-status-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  pointer-events: none;
+  transition: box-shadow 0.8s ease;
+}
+
+/* === IDLE state: subtle cyan breathing glow === */
+.jarvis-avatar-img.idle img {
+  filter: brightness(1) saturate(1);
+}
+.jarvis-avatar-img.idle .avatar-status-ring {
+  border-color: rgba(0, 170, 255, 0.4);
+  animation: avatarRingRotate 8s linear infinite;
+}
+.jarvis-avatar-img.idle .avatar-status-glow {
+  box-shadow: inset 0 0 60px rgba(0, 170, 255, 0.15), 0 0 30px rgba(0, 170, 255, 0.2);
+  animation: avatarBreathGlow 4s ease-in-out infinite;
+}
+
+/* === LISTENING state: bright cyan, intensified glow === */
+.jarvis-avatar-img.listening img {
+  filter: brightness(1.1) saturate(1.2);
+}
+.jarvis-avatar-img.listening .avatar-status-ring {
+  border-color: rgba(0, 221, 255, 0.7);
+  animation: avatarRingRotate 3s linear infinite;
+}
+.jarvis-avatar-img.listening .avatar-status-glow {
+  box-shadow: inset 0 0 80px rgba(0, 221, 255, 0.25), 0 0 50px rgba(0, 221, 255, 0.4);
+  animation: avatarBreathGlow 2s ease-in-out infinite;
+}
+
+/* === THINKING state: purple glow, slight pulse === */
+.jarvis-avatar-img.thinking img {
+  filter: brightness(0.95) saturate(1.1) hue-rotate(20deg);
+}
+.jarvis-avatar-img.thinking .avatar-status-ring {
+  border-color: rgba(136, 85, 238, 0.6);
+  animation: avatarRingRotate 2s linear infinite;
+}
+.jarvis-avatar-img.thinking .avatar-status-glow {
+  box-shadow: inset 0 0 70px rgba(136, 85, 238, 0.2), 0 0 40px rgba(136, 85, 238, 0.35);
+  animation: avatarBreathGlow 1.5s ease-in-out infinite;
+}
+
+/* === SPEAKING state: cyan-white, active pulse === */
+.jarvis-avatar-img.speaking img {
+  filter: brightness(1.05) saturate(1.15);
+}
+.jarvis-avatar-img.speaking .avatar-status-ring {
+  border-color: rgba(0, 221, 221, 0.6);
+  animation: avatarRingRotate 4s linear infinite;
+}
+.jarvis-avatar-img.speaking .avatar-status-glow {
+  box-shadow: inset 0 0 60px rgba(0, 221, 221, 0.2), 0 0 35px rgba(0, 221, 221, 0.3);
+  animation: avatarBreathGlow 1s ease-in-out infinite;
+}
+
+/* === ERROR state: red-orange, flickering === */
+.jarvis-avatar-img.error img {
+  filter: brightness(0.9) saturate(0.8) hue-rotate(-20deg);
+}
+.jarvis-avatar-img.error .avatar-status-ring {
+  border-color: rgba(255, 68, 34, 0.6);
+  animation: avatarFlicker 0.5s step-end infinite;
+}
+.jarvis-avatar-img.error .avatar-status-glow {
+  box-shadow: inset 0 0 60px rgba(255, 68, 34, 0.25), 0 0 30px rgba(255, 68, 34, 0.3);
+}
+
+/* === OFFLINE state: dim, gray === */
+.jarvis-avatar-img.offline img {
+  filter: brightness(0.5) saturate(0.3) grayscale(0.5);
+}
+.jarvis-avatar-img.offline .avatar-status-ring {
+  border-color: rgba(51, 68, 85, 0.3);
+  animation: none;
+}
+.jarvis-avatar-img.offline .avatar-status-glow {
+  box-shadow: none;
+  animation: none;
+}
+
+/* === Keyframes === */
+@keyframes avatarBreathGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes avatarRingRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes avatarFlicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

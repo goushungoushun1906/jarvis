@@ -1,0 +1,79 @@
+# ============================================
+# JARVIS - Git 忽略规则（防止敏感信息泄漏）
+# ============================================
+
+# ---------- 敏感配置（API Key 等） ----------
+.env
+.env.*
+!.env.example
+*.local
+secrets.*
+*.pem
+*.key
+
+# ---------- 数据库（可能含注入的 API Key） ----------
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ---------- 打包产物（内含 .env / backend.exe） ----------
+*.exe
+*.pyd
+*.dll
+server/backend-dist/
+server/dist/
+server/build/
+release/
+dist/
+build/
+
+# ---------- Python 运行时 ----------
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.uv/
+.ipynb_checkpoints/
+
+# ---------- 第三方依赖（不应提交，用 requirements 管理） ----------
+server/libs/
+node_modules/
+pyaudio_pkg/
+
+# ---------- 大模型 / 数据文件 ----------
+server/models/
+*.onnx
+*.bin
+*.pt
+*.pth
+*.whl
+
+# ---------- Electron 运行时 ----------
+.electron-data/
+
+# ---------- 日志 / 调试输出 ----------
+*.log
+*.err
+*.out
+backend.exe.*
+frontend.*
+diagnose_mic.py
+download_whisper.py
+db_check*.txt
+*.tmp
+
+# ---------- IDE ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

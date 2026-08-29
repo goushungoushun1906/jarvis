@@ -1,0 +1,540 @@
+/* ============================================
+   PluginManagement — Dark Theme Card-Grid
+   ============================================ */
+
+.plugin-mgmt-container {
+  max-width: 100%;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text-primary, #e0e0e0);
+}
+
+/* ---------- Header ---------- */
+.plugin-mgmt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.plugin-mgmt-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plugin-mgmt-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+  color: var(--text-primary, #fff);
+}
+
+.plugin-mgmt-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.plugin-mgmt-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.plugin-mgmt-upload-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ---------- Tabs ---------- */
+.plugin-mgmt-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+  margin-bottom: 14px;
+}
+
+.plugin-mgmt-tab {
+  position: relative;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.plugin-mgmt-tab:hover {
+  color: var(--text-primary, #ccc);
+}
+
+.plugin-mgmt-tab.active {
+  color: var(--accent-blue-light, #60a5fa);
+  font-weight: 600;
+}
+
+.plugin-mgmt-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-blue-light, #60a5fa);
+  border-radius: 1px;
+}
+
+.plugin-mgmt-tab.disabled {
+  color: rgba(255,255,255,0.25);
+  cursor: not-allowed;
+}
+
+.plugin-mgmt-tab.disabled:hover {
+  color: rgba(255,255,255,0.25);
+}
+
+/* ---------- Grid ---------- */
+.plugin-mgmt-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.plugin-mgmt-grid::-webkit-scrollbar {
+  width: 4px;
+}
+.plugin-mgmt-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+.plugin-mgmt-grid::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+
+/* ---------- Card ---------- */
+.plugin-mgmt-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  transition: background 0.2s, border-color 0.2s;
+  cursor: default;
+}
+
+.plugin-mgmt-card:hover {
+  background: var(--bg-glass-strong, rgba(255,255,255,0.07));
+  border-color: rgba(255,255,255,0.12);
+}
+
+.plugin-mgmt-card.disabled-card {
+  opacity: 0.45;
+}
+
+/* ---------- Icon ---------- */
+.plugin-mgmt-card-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.plugin-mgmt-card-icon.calendar { background: rgba(59,130,246,0.15); }
+.plugin-mgmt-card-icon.clipboard { background: rgba(245,158,11,0.15); }
+.plugin-mgmt-card-icon.reminder { background: rgba(34,197,94,0.15); }
+.plugin-mgmt-card-icon.system_monitor { background: rgba(139,92,246,0.15); }
+.plugin-mgmt-card-icon.weather { background: rgba(34,211,238,0.15); }
+.plugin-mgmt-card-icon.default {
+  background: rgba(255,255,255,0.08);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-secondary, #888);
+}
+
+/* ---------- Body ---------- */
+.plugin-mgmt-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plugin-mgmt-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #e0e0e0);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.plugin-mgmt-card-desc {
+  font-size: 11px;
+  color: var(--text-secondary, #777);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.plugin-mgmt-card-meta {
+  font-size: 10px;
+  color: var(--text-secondary, #555);
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  margin-top: 1px;
+}
+
+.plugin-mgmt-card-meta span {
+  white-space: nowrap;
+}
+
+/* ---------- Right-side toggle ---------- */
+.plugin-mgmt-card-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* ---------- Toggle switch ---------- */
+.plugin-mgmt-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+  display: block;
+}
+
+.plugin-mgmt-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.plugin-mgmt-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.12);
+  border-radius: 10px;
+  transition: background 0.25s;
+}
+
+.plugin-mgmt-toggle input:checked + .plugin-mgmt-toggle-track {
+  background: var(--accent-green, #22c55e);
+}
+
+.plugin-mgmt-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s;
+  pointer-events: none;
+}
+
+.plugin-mgmt-toggle input:checked ~ .plugin-mgmt-toggle-thumb {
+  transform: translateX(16px);
+}
+
+/* ---------- Card hover actions (top-right) ---------- */
+.plugin-mgmt-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+
+.plugin-mgmt-card:hover .plugin-mgmt-card-actions {
+  opacity: 1;
+}
+
+.plugin-mgmt-card-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  transition: background 0.15s, color 0.15s;
+}
+
+.plugin-mgmt-card-actions button:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--text-primary, #fff);
+}
+
+.plugin-mgmt-card-actions button.danger:hover {
+  background: rgba(239,68,68,0.15);
+  color: #f87171;
+}
+
+/* ---------- Card footer (hidden by default, for future use) ---------- */
+.plugin-mgmt-card-footer {
+  display: none;
+}
+
+/* ---------- Config modal ---------- */
+.plugin-mgmt-config-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.plugin-mgmt-config-modal {
+  background: var(--bg-elevated, #1e1e2e);
+  border: 1px solid var(--border-medium, rgba(255,255,255,0.12));
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  width: 90%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+  animation: slideUp 0.25s ease;
+  position: relative;
+}
+
+.plugin-mgmt-config-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.plugin-mgmt-config-modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary, #fff);
+}
+
+.plugin-mgmt-config-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.plugin-mgmt-config-close-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--text-primary, #fff);
+}
+
+.plugin-mgmt-config-field {
+  margin-bottom: 14px;
+}
+
+.plugin-mgmt-config-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #ccc);
+  margin-bottom: 6px;
+}
+
+.plugin-mgmt-config-field input,
+.plugin-mgmt-config-field select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary, #e0e0e0);
+  box-sizing: border-box;
+}
+
+.plugin-mgmt-config-field input:focus,
+.plugin-mgmt-config-field select:focus {
+  border-color: var(--accent-blue, #3b82f6);
+}
+
+.plugin-mgmt-config-desc {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary, #666);
+  margin-top: 3px;
+}
+
+.plugin-mgmt-config-msg {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.plugin-mgmt-config-msg.success {
+  background: rgba(34,197,94,0.1);
+  color: #4ade80;
+}
+
+.plugin-mgmt-config-msg.error {
+  background: rgba(239,68,68,0.1);
+  color: #f87171;
+}
+
+.plugin-mgmt-config-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.plugin-mgmt-config-actions button {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.plugin-mgmt-config-actions .cancel-btn {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary, #aaa);
+}
+
+.plugin-mgmt-config-actions .cancel-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.plugin-mgmt-config-actions .save-btn {
+  background: var(--accent-blue, #3b82f6);
+  color: #fff;
+}
+
+.plugin-mgmt-config-actions .save-btn:hover {
+  background: var(--accent-blue-dark, #2563eb);
+}
+
+.plugin-mgmt-config-actions .save-btn:disabled {
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.4);
+  cursor: not-allowed;
+}
+
+/* ---------- Empty state ---------- */
+.plugin-mgmt-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary, #555);
+  font-size: 13px;
+}
+
+.plugin-mgmt-empty-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* ---------- Error banner ---------- */
+.plugin-mgmt-error {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.2);
+  color: #f87171;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plugin-mgmt-error-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.plugin-mgmt-error-close:hover {
+  background: rgba(239,68,68,0.15);
+}
+
+/* ---------- Loading ---------- */
+.plugin-mgmt-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--text-secondary, #666);
+  font-size: 13px;
+}
