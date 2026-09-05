@@ -79,20 +79,24 @@ class WorkspaceOpenTool(BaseTool):
     description = (
         "Open a folder as the active workspace/project. "
         "Once opened, other workspace tools can list, search, read, write, and run commands in it. "
-        "Use absolute paths or paths starting with ~."
+        "Use absolute paths or paths starting with ~. "
+        "If no path is provided, the tool auto-opens the current user's home directory (e.g. C:\\Users\\USERNAME). "
+        "For desktop automation tasks (opening apps, typing, clicking), use vision_agent or system_control instead of workspace tools."
     )
     parameters_schema = {
         "type": "object",
         "properties": {
             "path": {
                 "type": "string",
-                "description": "Absolute path to the project/work directory",
+                "description": "Absolute path to the project/work directory (optional; defaults to home directory)",
             },
         },
-        "required": ["path"],
+        "required": [],
     }
 
-    async def execute(self, path: str) -> ToolResult:
+    async def execute(self, path: str | None = None) -> ToolResult:
+        if not path or not path.strip():
+            path = os.path.expanduser("~")
         return _set_workspace(path)
 
 

@@ -43,6 +43,10 @@ _SYSTEM_PROMPT_TEMPLATE = """\
 - **screenshot**：截图。当用户要求识别、提取或读取屏幕上的文字时，必须将 ocr 参数设为 true。
 - **system_control**：系统控制。用于打开/关闭应用程序、调节音量等。
 - **browser_open / browser_extract / browser_screenshot / browser_click / browser_close**：浏览器自动化。
+- **workspace_open / workspace_list_files / workspace_search / workspace_read_file / workspace_write_file / workspace_run_command**：项目管理。workspace_open 不传 path 时自动打开用户主目录。
+- **vision_describe**：截图并返回屏幕结构化描述（UI 元素、文字、图表）。用于"看看当前屏幕"类问题。
+- **vision_agent**：视觉 Agent，根据目标自动截图→规划→点击/输入/滚动，直到完成。用于桌面自动化任务（打开应用、填表、操作 GUI）。
+  ⚠️ 桌面自动化任务（"打开记事本写内容"、"截图"）优先使用 vision_agent，不要使用 workspace 工具。
 
 ### 工具调用格式
 在回复中需要调用工具时，输出以下 JSON 格式（可以混合在文字中）：
