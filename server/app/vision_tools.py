@@ -304,6 +304,14 @@ class VisionAgentTool(BaseTool):
                 return parts[0].lower(), parts[1:]
         return None
 
+    @staticmethod
+    def _safe_int(value: str, default: int = 0) -> int:
+        """Parse int from string, stripping brackets or other noise."""
+        try:
+            return int(value.strip("[]() ,"))
+        except (ValueError, TypeError):
+            return default
+
     def _execute_action(self, pyautogui, action_type: str, args: list[str], screen_size) -> bool:
         """Execute a single pyautogui action. Returns True on success."""
         try:
@@ -312,8 +320,6 @@ class VisionAgentTool(BaseTool):
                     return False
                 target_text = args[0]
                 try:
-                    # Capture fresh screenshot for OCR text localization
-                    _, _ = _capture_screenshot_base64("fullscreen")
                     # Save to temp file for OCR engine
                     import tempfile
                     import os
@@ -344,7 +350,6 @@ class VisionAgentTool(BaseTool):
                         box, text, score = det[0], det[1], (det[2] if len(det) > 2 else 1.0)
                         text_str = str(text)
                         if target_lower in text_str.lower():
-                            # Prefer shorter/more exact matches
                             match_score = score / max(1, len(text_str))
                             if match_score > best_score:
                                 best_score = match_score
@@ -354,7 +359,6 @@ class VisionAgentTool(BaseTool):
                         logger.warning("click_text: could not find '%s' on screen", target_text)
                         return False
 
-                    # box is usually [[x1,y1],[x2,y1],[x2,y2],[x1,y2]]
                     xs = [p[0] for p in best]
                     ys = [p[1] for p in best]
                     cx = int((min(xs) + max(xs)) / 2)
@@ -366,10 +370,28 @@ class VisionAgentTool(BaseTool):
                     return False
 
             if action_type == "click_coords":
-                if len(args) < 2:
+                # Accept both formats: click_coords | 1500 | 500  and  click_coords | [1500, 500]
+                if len(args) >= 2:
+                    x = self._safe_int(args[0])
+                    y = self._safe_int(args[1])
+                elif len(args) == 1:
+                    # Single arg may be "[1500, 500]" — parse comma-separated values
+                    inner = args[0].strip("[]()")
+                    parts = [p.strip() for p in inner.split(",") if p.strip()]
+                    if len(parts) >= 2:
+                        x = self._safe_int(parts[0])
+                        y = self._safe_int(parts[1])
+                    else:
+                        x = y = self._safe_int(args[0])
+                else:
                     return False
-                x, y = int(args[0]), int(args[1])
+
+                # Clamp to screen bounds (0-based, inclusive)
+                x = max(0, min(x, screen_size.width - 1))
+                y = max(0, min(y, screen_size.height - 1))
+
                 pyautogui.click(x, y)
+                logger.info("click_coords(%d, %d) [screen: %dx%d]", x, y, screen_size.width, screen_size.height)
                 return True
 
             if action_type == "type_text":
