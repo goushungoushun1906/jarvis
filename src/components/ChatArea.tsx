@@ -49,6 +49,7 @@ interface ChatAreaProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onForkFromMessage?: (messageId: number) => void;
   onSwitchModel?: (modelId: string) => Promise<void>;
+  onOpenSkillCenter?: () => void;
 }
 
 export default function ChatArea({
@@ -86,6 +87,7 @@ export default function ChatArea({
   fileInputRef,
   onForkFromMessage,
   onSwitchModel,
+  onOpenSkillCenter,
 }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -263,6 +265,18 @@ export default function ChatArea({
           <span className="chat-title">{conversationTitle || "JARVIS"}</span>
         </div>
         <div className="chat-header-right">
+          <button
+            className="header-btn"
+            onClick={onOpenSkillCenter}
+            title="技能中心"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" />
+              <polyline points="2 17 12 22 22 17" />
+              <polyline points="2 12 12 17 22 12" />
+            </svg>
+            <span className="header-btn-label">技能</span>
+          </button>
           <button
             className={`header-btn ${showMessages ? "active" : ""}`}
             onClick={() => setShowMessages(!showMessages)}

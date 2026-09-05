@@ -184,3 +184,16 @@ export type VoiceMode = "off" | "manual" | "auto";
 // off = never play voice
 // manual = click play button on individual messages to play TTS
 // auto = auto-play TTS for all AI responses
+
+// ====== Skills ======
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  requires_input: boolean;
+  input_label: string;
+  input_placeholder: string;
+  default_input: string;
+}

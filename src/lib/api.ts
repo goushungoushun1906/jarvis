@@ -16,6 +16,7 @@ import type {
   LLMCallRecord,
   CostsByModel,
   CostsByDay,
+  Skill,
 } from "./types";
 
 const API_BASE = "http://127.0.0.1:18200";
@@ -356,6 +357,19 @@ export async function getCostsByModel(days: number = 30): Promise<{ days: number
 export async function getCostsByDay(days: number = 30): Promise<{ days: number; days_data: CostsByDay[] }> {
   return request(`/api/costs/by-day?days=${days}`);
 }
+
+// ====== Skills ======
+export async function listSkills(): Promise<{ skills: Skill[] }> {
+  return request<{ skills: Skill[] }>("/api/skills");
+}
+
+export async function invokeSkill(skillId: string, input: string = "", language: string = ""): Promise<{ success: boolean; prompt?: string; error?: string }> {
+  return request<{ success: boolean; prompt?: string; error?: string }>("/api/skills/invoke", {
+    method: "POST",
+    body: JSON.stringify({ skill_id: skillId, input, language }),
+  });
+}
+
 
 // ====== Region Screenshot + OCR ======
 export interface RegionScreenshotResult {

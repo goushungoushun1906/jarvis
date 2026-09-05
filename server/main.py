@@ -51,6 +51,7 @@ from app.routes.privacy import router as privacy_router
 from app.routes.update import router as update_router
 from app.routes.wakeword import router as wakeword_router
 from app.routes.scheduler import router as scheduler_router
+from app.routes.skills import router as skills_router
 from app.debug import debug_middleware, debug_router, env_config
 
 logging.basicConfig(
@@ -170,6 +171,7 @@ app.include_router(privacy_router)
 app.include_router(update_router)
 app.include_router(wakeword_router)
 app.include_router(scheduler_router)
+app.include_router(skills_router)
 app.include_router(debug_router)
 
 

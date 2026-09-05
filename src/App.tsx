@@ -28,6 +28,7 @@ import { stripMarkdown } from "./lib/stripMarkdown";
 import useAudioPlayer from "./hooks/useAudioPlayer";
 import Sidebar from "./components/Sidebar";
 import ChatArea from "./components/ChatArea";
+import SkillCenter from "./components/SkillCenter";
 
 import SystemMonitor from "./components/SystemMonitor";
 
@@ -46,6 +47,7 @@ export default function App() {
   // === UI state ===
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [skillCenterOpen, setSkillCenterOpen] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("checking");
   const [javisStatus, setJavisStatus] = useState<JavisStatus>("idle");
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -551,6 +553,14 @@ export default function App() {
     }
   }, [config]);
 
+  // === Skill center ===
+  const handleOpenSkillCenter = useCallback(() => setSkillCenterOpen(true), []);
+  const handleCloseSkillCenter = useCallback(() => setSkillCenterOpen(false), []);
+  const handleSkillSendMessage = useCallback((text: string) => {
+    if (!text.trim() || isStreaming) return;
+    sendVoiceMessageRef.current(text.trim());
+  }, [isStreaming]);
+
   return (
     <div className="app-layout">
       {/* System Resource Monitor */}
@@ -604,7 +614,17 @@ export default function App() {
         fileInputRef={fileInputRef}
         onForkFromMessage={handleForkConversation}
         onSwitchModel={handleSwitchModel}
+        onOpenSkillCenter={handleOpenSkillCenter}
       />
+
+      {/* Skill Center */}
+      {skillCenterOpen && (
+        <SkillCenter
+          connectionStatus={connectionStatus}
+          onSendMessage={handleSkillSendMessage}
+          onClose={handleCloseSkillCenter}
+        />
+      )}
 
       {/* Settings Panel */}
       {settingsOpen && (

@@ -19,6 +19,7 @@ import httpx
 from . import memory as mem
 from .system_tools import register_system_tools
 from .tools import BaseTool, ToolResult, registry
+from .vision_tools import register_vision_tools
 from .workspace_tools import register_workspace_tools
 
 logger = logging.getLogger("jarvis")
@@ -577,3 +578,4 @@ def register_tools() -> None:
     registry.register(MemoryTool())
     register_system_tools()
     register_workspace_tools()
+    register_vision_tools()
