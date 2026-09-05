@@ -53,8 +53,32 @@ function getBackendPath() {
   return null; // signal to use python dev mode
 }
 
+function isBackendPortInUse() {
+  return new Promise((resolve) => {
+    const tester = require('net').createServer();
+    tester.once('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    });
+    tester.once('listening', () => {
+      tester.close(() => resolve(false));
+    });
+    tester.listen(BACKEND_PORT, '127.0.0.1');
+  });
+}
+
 function startBackend() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    const backendAlreadyRunning = await isBackendPortInUse();
+    if (backendAlreadyRunning) {
+      console.log(`Backend port ${BACKEND_PORT} already in use; skipping Electron backend launch.`);
+      resolve();
+      return;
+    }
+
     const backendExe = getBackendPath();
     const serverDir = app.isPackaged
       ? path.join(process.resourcesPath, 'backend')
