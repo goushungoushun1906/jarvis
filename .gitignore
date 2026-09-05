@@ -1,79 +1,77 @@
-# ============================================
-# JARVIS - Git 忽略规则（防止敏感信息泄漏）
-# ============================================
+# GitHub 上已忽略（不会被提交）
+# ============================================================
 
-# ---------- 敏感配置（API Key 等） ----------
-.env
-.env.*
-!.env.example
-*.local
-secrets.*
-*.pem
-*.key
+# === 敏感配置 ===
+server/.env
+server/backend-dist/.env
 
-# ---------- 数据库（可能含注入的 API Key） ----------
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
+# === 数据库（含对话历史和 AI 记忆，本地运行时需要） ===
+server/*.db
+server/*.db-wal
+server/*.db-shm
+!server/jarvis-db.enc  # 加密备份文件会提交
 
-# ---------- 打包产物（内含 .env / backend.exe） ----------
-*.exe
-*.pyd
-*.dll
+# === 打包产物 ===
 server/backend-dist/
 server/dist/
 server/build/
-release/
 dist/
 build/
+release/
+**/*.exe
 
-# ---------- Python 运行时 ----------
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-env/
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.uv/
-.ipynb_checkpoints/
+# === 虚拟环境 ===
+server/.venv/
+server/__pycache__/
+server/**/*.pyc
+**/__pycache__/
+**/*.pyc
+**/*.pyo
 
-# ---------- 第三方依赖（不应提交，用 requirements 管理） ----------
-server/libs/
+# === Node 环境 ===
 node_modules/
-pyaudio_pkg/
+**/node_modules/
+**/.cache/
+**/.vite/
 
-# ---------- 大模型 / 数据文件 ----------
-server/models/
-*.onnx
-*.bin
-*.pt
-*.pth
-*.whl
-
-# ---------- Electron 运行时 ----------
+# === Electron 缓存 ===
 .electron-data/
+**/.electron-gyp/
 
-# ---------- 日志 / 调试输出 ----------
-*.log
-*.err
-*.out
-backend.exe.*
-frontend.*
-diagnose_mic.py
-download_whisper.py
-db_check*.txt
-*.tmp
+# === 日志 ===
+**/*.log
+logs/
 
-# ---------- IDE ----------
-.idea/
-.vscode/
-*.swp
-*.swo
+# === Python 构建 ===
+**/*.egg-info/
+**/.eggs/
+*.egg
+
+# === OS 文件 ===
 .DS_Store
 Thumbs.db
+
+# === 本地依赖与模型数据 ===
+server/libs/
+server/models/
+server/data/
+pyaudio_pkg/
+
+# === 诊断与临时脚本 ===
+diagnose_mic.py
+download_whisper.py
+dump_deps.py
+inspect_db.py
+scripts/backup_db.py
+scripts/decrypt_db.py
+
+# === 运行时临时文件 ===
+server/*.err
+server/*.out
+server/*.startup.err
+server/db_check*.txt
+NUL
+
+# === 临时测试文件 ===
+server/test_large.wav
+server/mic_test.wav

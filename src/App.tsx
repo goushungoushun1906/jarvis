@@ -111,6 +111,26 @@ export default function App() {
       });
   }, []);
 
+  // === Listen for floating window queries (global shortcut) ===
+  useEffect(() => {
+    if (!window.electronAPI?.onFloatingQuery) return;
+    const cleanup = window.electronAPI.onFloatingQuery((query: string) => {
+      if (!query.trim() || isStreaming) return;
+      sendVoiceMessageRef.current(query.trim());
+    });
+    return cleanup;
+  }, [isStreaming]);
+
+  // === Listen for selection assistant queries ===
+  useEffect(() => {
+    if (!window.electronAPI?.onSelectionQuery) return;
+    const cleanup = window.electronAPI.onSelectionQuery((query: string) => {
+      if (!query.trim() || isStreaming) return;
+      sendVoiceMessageRef.current(query.trim());
+    });
+    return cleanup;
+  }, [isStreaming]);
+
   // === Get display title for current conversation ===
   const getConversationTitle = useCallback((): string => {
     if (!activeConvoId) return "JARVIS";

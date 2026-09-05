@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, globalShortcut, clipboard } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const { net } = require('electron');
@@ -23,11 +23,20 @@ app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-gpu-driver-bug-workarounds');
 
 let mainWindow;
+let floatingWindow = null;
+let selectionWindow = null;
 let tray = null;
 let backendProcess;
 let backendRestartCount = 0;
 const MAX_BACKEND_RESTARTS = 3;
 const BACKEND_PORT = 18200;
+const FLOATING_SHORTCUT = 'Ctrl+Shift+Space';
+const SELECTION_SHORTCUT = 'Ctrl+Shift+C';
+
+// Clipboard polling for text selection assistant
+let lastClipboardText = '';
+let clipboardPollingInterval = null;
+let ignoreNextClipboardChange = false;
 
 // Auto-start setting key
 const AUTO_START_KEY = 'jarvis_auto_start';
@@ -161,6 +170,178 @@ function createWindow() {
       mainWindow.hide();
     }
   });
+}
+
+// ====== Floating input window ======
+function createFloatingWindow() {
+  if (floatingWindow && !floatingWindow.isDestroyed()) {
+    return floatingWindow;
+  }
+
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth } = primaryDisplay.workAreaSize;
+  const winWidth = 640;
+  const winHeight = 80;
+
+  floatingWindow = new BrowserWindow({
+    width: winWidth,
+    height: winHeight,
+    x: Math.round((screenWidth - winWidth) / 2),
+    y: 80,
+    show: false,
+    frame: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    transparent: true,
+    hasShadow: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  floatingWindow.loadFile(path.join(__dirname, 'floating-window.html'));
+
+  floatingWindow.on('blur', () => {
+    hideFloatingWindow();
+  });
+
+  floatingWindow.on('closed', () => {
+    floatingWindow = null;
+  });
+
+  return floatingWindow;
+}
+
+function showFloatingWindow() {
+  const win = createFloatingWindow();
+  if (!win) return;
+
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth } = primaryDisplay.workAreaSize;
+  const bounds = win.getBounds();
+  const cursor = screen.getCursorScreenPoint();
+  const currentDisplay = screen.getDisplayNearestPoint(cursor);
+  const workArea = currentDisplay.workArea;
+
+  // Center on the active display, near the top
+  const x = Math.round(workArea.x + (workArea.width - bounds.width) / 2);
+  const y = Math.round(workArea.y + 80);
+
+  win.setBounds({ x, y, width: bounds.width, height: bounds.height });
+
+  win.show();
+  win.focus();
+  win.webContents.send('floating-focus');
+}
+
+function hideFloatingWindow() {
+  if (floatingWindow && !floatingWindow.isDestroyed()) {
+    floatingWindow.hide();
+  }
+}
+
+function toggleFloatingWindow() {
+  if (floatingWindow && floatingWindow.isVisible() && !floatingWindow.isDestroyed()) {
+    hideFloatingWindow();
+  } else {
+    showFloatingWindow();
+  }
+}
+
+// ====== Selection assistant window ======
+function createSelectionWindow() {
+  if (selectionWindow && !selectionWindow.isDestroyed()) {
+    return selectionWindow;
+  }
+
+  selectionWindow = new BrowserWindow({
+    width: 320,
+    height: 180,
+    show: false,
+    frame: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    transparent: true,
+    hasShadow: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  selectionWindow.loadFile(path.join(__dirname, 'selection-window.html'));
+
+  selectionWindow.on('blur', () => {
+    hideSelectionWindow();
+  });
+
+  selectionWindow.on('closed', () => {
+    selectionWindow = null;
+  });
+
+  return selectionWindow;
+}
+
+function showSelectionWindow() {
+  const text = clipboard.readText().trim();
+  if (!text) return;
+
+  const win = createSelectionWindow();
+  if (!win) return;
+
+  const cursor = screen.getCursorScreenPoint();
+  const currentDisplay = screen.getDisplayNearestPoint(cursor);
+  const workArea = currentDisplay.workArea;
+  const bounds = win.getBounds();
+
+  let x = Math.round(cursor.x + 16);
+  let y = Math.round(cursor.y + 16);
+
+  // Keep inside work area
+  if (x + bounds.width > workArea.x + workArea.width) {
+    x = Math.max(workArea.x, cursor.x - bounds.width - 8);
+  }
+  if (y + bounds.height > workArea.y + workArea.height) {
+    y = Math.max(workArea.y, cursor.y - bounds.height - 8);
+  }
+
+  win.setBounds({ x, y, width: bounds.width, height: bounds.height });
+  win.webContents.send('selection-text', text);
+  win.show();
+  win.focus();
+}
+
+function hideSelectionWindow() {
+  if (selectionWindow && !selectionWindow.isDestroyed()) {
+    selectionWindow.hide();
+  }
+}
+
+function startClipboardPolling() {
+  if (clipboardPollingInterval) return;
+  clipboardPollingInterval = setInterval(() => {
+    const text = clipboard.readText();
+    if (text && text !== lastClipboardText && !ignoreNextClipboardChange) {
+      lastClipboardText = text;
+    }
+    ignoreNextClipboardChange = false;
+  }, 500);
+}
+
+function stopClipboardPolling() {
+  if (clipboardPollingInterval) {
+    clearInterval(clipboardPollingInterval);
+    clipboardPollingInterval = null;
+  }
 }
 
 // ====== Tray helpers ======
@@ -356,6 +537,68 @@ ipcMain.on('region-selected', (_event, region) => {
   }
 });
 
+// ====== Floating window IPC ======
+ipcMain.on('floating-query', (_event, query) => {
+  if (!query || !query.trim()) return;
+
+  hideFloatingWindow();
+
+  // Show and focus main window
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+  } else {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+
+  // Forward the query to the renderer after a short delay to ensure window is ready
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('floating-query', query.trim());
+    }
+  }, 300);
+});
+
+ipcMain.on('floating-hide', () => {
+  hideFloatingWindow();
+});
+
+// ====== Selection assistant IPC ======
+ipcMain.on('selection-action', (_event, { text, action }) => {
+  if (!text || !action) return;
+
+  hideSelectionWindow();
+
+  // Build prompt based on action
+  const prompts = {
+    explain: `请解释以下内容：\n\n${text}`,
+    translate: `请将以下内容翻译成中文：\n\n${text}`,
+    summarize: `请总结以下内容的要点：\n\n${text}`,
+    rewrite: `请改写以下内容，保持原意但让表达更流畅自然：\n\n${text}`,
+  };
+  const prompt = prompts[action] || `${action}: ${text}`;
+
+  // Show and focus main window
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+  } else {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('selection-query', prompt);
+    }
+  }, 300);
+});
+
+ipcMain.on('selection-hide', () => {
+  hideSelectionWindow();
+});
+
 app.whenReady().then(async () => {
   try {
     await startBackend();
@@ -364,6 +607,25 @@ app.whenReady().then(async () => {
   }
 
   createTray();
+
+  // Register global shortcut for floating input window
+  const floatingRegistered = globalShortcut.register(FLOATING_SHORTCUT, () => {
+    toggleFloatingWindow();
+  });
+  if (!floatingRegistered) {
+    console.warn(`Failed to register global shortcut: ${FLOATING_SHORTCUT}`);
+  }
+
+  // Register global shortcut for selection assistant
+  const selectionRegistered = globalShortcut.register(SELECTION_SHORTCUT, () => {
+    showSelectionWindow();
+  });
+  if (!selectionRegistered) {
+    console.warn(`Failed to register global shortcut: ${SELECTION_SHORTCUT}`);
+  }
+
+  // Start clipboard polling to capture copied text
+  startClipboardPolling();
 
   const hiddenStart = process.argv.includes('--hidden');
   if (!hiddenStart) {
@@ -396,4 +658,14 @@ app.on('before-quit', () => {
     tray.destroy();
     tray = null;
   }
+  if (floatingWindow && !floatingWindow.isDestroyed()) {
+    floatingWindow.destroy();
+    floatingWindow = null;
+  }
+  if (selectionWindow && !selectionWindow.isDestroyed()) {
+    selectionWindow.destroy();
+    selectionWindow = null;
+  }
+  stopClipboardPolling();
+  globalShortcut.unregisterAll();
 });

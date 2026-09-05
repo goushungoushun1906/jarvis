@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS Quick Input</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: rgba(10, 10, 26, 0.92);
+      --border: rgba(0, 212, 255, 0.35);
+      --accent: #00d4ff;
+      --accent-glow: 0 0 20px rgba(0, 212, 255, 0.35);
+      --text: #c8d6e5;
+      --placeholder: rgba(200, 214, 229, 0.4);
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: transparent;
+      user-select: none;
+    }
+    .container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--accent-glow), 0 10px 40px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(16px);
+      -webkit-app-region: drag;
+    }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(0, 212, 255, 0.9), rgba(0, 100, 200, 0.4));
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+      margin-right: 12px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #fff;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+    }
+    .input-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      position: relative;
+      -webkit-app-region: no-drag;
+    }
+    input {
+      width: 100%;
+      height: 44px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 10px;
+      padding: 0 14px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);
+    }
+    input::placeholder { color: var(--placeholder); }
+    .hint {
+      position: absolute;
+      right: 14px;
+      color: rgba(200, 214, 229, 0.35);
+      font-size: 12px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="avatar">J</div>
+    <div class="input-wrap">
+      <input id="query" type="text" placeholder="有问题随时问我..." autocomplete="off" autofocus>
+      <span class="hint">Enter 发送 · Esc 隐藏</span>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('query');
+
+    function submit() {
+      const query = input.value.trim();
+      if (!query) {
+        window.electronAPI.hideFloatingWindow();
+        return;
+      }
+      window.electronAPI.submitFloatingQuery(query);
+      input.value = '';
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submit();
+      } else if (e.key === 'Escape') {
+        window.electronAPI.hideFloatingWindow();
+      }
+    });
+
+    window.electronAPI.onFloatingFocus(() => {
+      input.focus();
+      input.select();
+    });
+
+    // Auto focus when window loads
+    window.addEventListener('DOMContentLoaded', () => {
+      input.focus();
+    });
+  </script>
+</body>
+</html>

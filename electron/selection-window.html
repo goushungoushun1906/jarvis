@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS Selection Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: rgba(10, 10, 26, 0.95);
+      --border: rgba(0, 212, 255, 0.35);
+      --accent: #00d4ff;
+      --accent-hover: #33ddff;
+      --text: #c8d6e5;
+      --muted: rgba(200, 214, 229, 0.6);
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: transparent;
+      user-select: none;
+    }
+    .container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.25), 0 10px 40px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(16px);
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .close {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .close:hover {
+      background: rgba(255, 68, 68, 0.2);
+      color: #ff4444;
+    }
+    .text-preview {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(0, 212, 255, 0.15);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      word-break: break-word;
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .btn {
+      padding: 8px 0;
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 8px;
+      background: rgba(0, 212, 255, 0.08);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+    .btn:hover {
+      background: rgba(0, 212, 255, 0.2);
+      border-color: var(--accent);
+      color: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">Jarvis 划词助手</div>
+      <div class="close" id="close">✕</div>
+    </div>
+    <div class="text-preview" id="preview">选中文字后将显示在这里</div>
+    <div class="actions">
+      <button class="btn" data-action="explain">解释</button>
+      <button class="btn" data-action="translate">翻译</button>
+      <button class="btn" data-action="summarize">总结</button>
+      <button class="btn" data-action="rewrite">改写</button>
+    </div>
+  </div>
+
+  <script>
+    const preview = document.getElementById('preview');
+    const closeBtn = document.getElementById('close');
+    let currentText = '';
+
+    window.electronAPI.onSelectionText((text) => {
+      currentText = text;
+      preview.textContent = text;
+    });
+
+    closeBtn.addEventListener('click', () => {
+      window.electronAPI.hideSelectionWindow();
+    });
+
+    document.querySelectorAll('.btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        if (!currentText || !action) return;
+        window.electronAPI.submitSelectionAction({ text: currentText, action });
+      });
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.electronAPI.hideSelectionWindow();
+      }
+    });
+  </script>
+</body>
+</html>

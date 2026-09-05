@@ -57,5 +57,13 @@ interface Window {
   webkitSpeechRecognition?: SpeechRecognitionConstructor;
   electronAPI?: {
     captureRegion?: () => Promise<{ left: number; top: number; width: number; height: number } | null>;
+    submitFloatingQuery?: (query: string) => void;
+    hideFloatingWindow?: () => void;
+    onFloatingFocus?: (callback: () => void) => void;
+    onFloatingQuery?: (callback: (query: string) => void) => () => void;
+    submitSelectionAction?: (payload: { text: string; action: string }) => void;
+    hideSelectionWindow?: () => void;
+    onSelectionText?: (callback: (text: string) => void) => () => void;
+    onSelectionQuery?: (callback: (query: string) => void) => () => void;
   };
 }
