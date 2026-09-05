@@ -270,3 +270,12 @@ xxhash==3.8.0
 yarl==1.24.2
 youtube-transcript-api==1.2.4
 zstandard==0.25.0
+
+# Phase 16 P2: 视觉 Agent 与屏幕自动化
+pyautogui==0.9.54
+pygetwindow==0.0.9
+pymsgbox==2.0.1
+pyrect==0.2.0
+pyscreeze==1.0.1
+pytweening==1.2.0
+mouseinfo==0.1.3
