@@ -6,8 +6,10 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from mcp import ClientSession, StdioServerParameters
@@ -16,7 +18,23 @@ from mcp.client.sse import sse_client
 
 logger = logging.getLogger("jarvis")
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "mcp_servers.json")
+
+def _resolve_config_path() -> str:
+    """Resolve the MCP servers config file location.
+
+    打包（sys.frozen）后 __file__ 指向 PyInstaller 的 _MEIPASS 临时目录，
+    该目录每次启动都会重建 —— 直接用它定位配置，用户改了 exe 同级的
+    mcp_servers.json 也不会生效（与 .env 当初踩的是同一个坑）。
+    因此 frozen 下优先 exe 同级目录（持久且可编辑），不存在时回退打包进去的那份。
+    """
+    if getattr(sys, "frozen", False):
+        candidate = Path(sys.executable).resolve().parent / "mcp_servers.json"
+        if candidate.exists():
+            return str(candidate)
+    return str(Path(__file__).resolve().parent.parent / "mcp_servers.json")
+
+
+CONFIG_PATH = _resolve_config_path()
 
 
 @dataclass

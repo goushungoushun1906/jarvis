@@ -18,6 +18,11 @@ server/build/
 dist/
 build/
 release/
+# electron-builder 换名输出的目录（覆盖已存在的产物目录会被批量删除策略拦下，
+# 因此每次构建换一个新目录名，这里统一忽略）
+release-new/
+release-b*/
+release-old-*/
 **/*.exe
 
 # === 虚拟环境 ===

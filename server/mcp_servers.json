@@ -2,7 +2,7 @@
   "servers": {
     "time": {
       "transport": "stdio",
-      "command": "python",
+      "command": "C:\\Users\\HONOR\\Documents\\trae work09\\jarvis\\server\\.venv\\Scripts\\python.exe",
       "args": ["C:\\Users\\HONOR\\Documents\\trae work09\\jarvis\\server\\mcp_servers\\time_server.py"],
       "enabled": true
     },
