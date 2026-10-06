@@ -20,14 +20,14 @@ from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 logger = logging.getLogger("jarvis")
 
 # Store ChromaDB data next to the SQLite database (inside server/data/chroma_db).
-# In PyInstaller production, resolve from _MEIPASS temp dir.
+#
+# 打包后不能用 _MEIPASS：它是每次启动重建的临时解压目录，语义记忆会随重启清空。
+# 优先用 config.py 解析出的持久化目录（exe 所在目录），与 jarvis.db 保持一致。
 import sys as _sys
 if getattr(_sys, 'frozen', False):
-    _meipass = getattr(_sys, '_MEIPASS', None)
-    if _meipass:
-        _prod_server_dir = str(Path(_meipass))
-    else:
-        _prod_server_dir = str(Path(_sys.executable).parent)
+    _prod_server_dir = os.environ.get('_JARVIS_SERVER_DIR') or str(
+        Path(_sys.executable).resolve().parent
+    )
 else:
     _prod_server_dir = None
 _default_db_dir = os.path.join(

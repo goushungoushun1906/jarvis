@@ -187,9 +187,20 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        "main:app",
-        host="127.0.0.1",
-        port=settings.server_port,
-        log_level="info",
-    )
+    if getattr(sys, 'frozen', False):
+        # PyInstaller 打包后入口脚本不是可导入模块（它作为 __main__ 直接在归档里执行），
+        # uvicorn.run("main:app") 会报 "Error loading ASGI app. Could not import module main"。
+        # 冻结模式下直接传 app 对象。
+        uvicorn.run(
+            app,
+            host="127.0.0.1",
+            port=settings.server_port,
+            log_level="info",
+        )
+    else:
+        uvicorn.run(
+            "main:app",
+            host="127.0.0.1",
+            port=settings.server_port,
+            log_level="info",
+        )

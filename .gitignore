@@ -22,6 +22,15 @@ release/
 
 # === 虚拟环境 ===
 server/.venv/
+# 依赖收敛验证用的临时 venv（全新空环境跑 pip install + pytest）
+server/.venv-fresh/
+server/.venv-clean/
+server/.venv-lock/
+server/.venv-final/
+server/fresh_install.log
+server/clean_install.log
+server/lock_install.log
+server/final_install.log
 server/__pycache__/
 server/**/*.pyc
 **/__pycache__/
