@@ -108,6 +108,7 @@ async def _call_vision_llm(messages: list[dict], max_tokens: int = 2048) -> str:
 
 class VisionDescribeTool(BaseTool):
     name = "vision_describe"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
         "Capture the current screen (or a region) and return a structured "
         "description of what is visible: UI elements, text, layout, icons, "

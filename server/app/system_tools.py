@@ -85,6 +85,7 @@ def _get_win32clipboard():
 
 class ScreenshotTool(BaseTool):
     name = "screenshot"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
         "Capture a screenshot of the screen. "
         "By default OCR is enabled so any visible text is extracted. "
@@ -321,6 +322,7 @@ class ClipboardTool(BaseTool):
 
 class SystemMonitorTool(BaseTool):
     name = "system_monitor"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
         "Get real-time system resource usage: CPU, RAM, disk, network, battery. "
         "Use this when the user asks about computer performance or resources."

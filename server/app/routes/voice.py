@@ -35,18 +35,20 @@ _recording_state: dict = {
 
 
 def _get_pyaudio():
-    """Lazily import and return pyaudio (avoids startup cost)."""
-    import sys, os
-    # Find pyaudio_pkg: search upward from this file until we find jarvis/pyaudio_pkg
-    d = os.path.dirname(os.path.abspath(__file__))
-    for _ in range(6):  # max depth search
-        candidate = os.path.join(d, "pyaudio_pkg")
-        if os.path.isdir(candidate):
-            if candidate not in sys.path:
-                sys.path.insert(0, candidate)
-            break
-        d = os.path.dirname(d)
-    import pyaudio
+    """Lazily import and return pyaudio (avoids startup cost).
+
+    PyAudio is a plain venv dependency now (see requirements.txt). The old
+    vendored copy at ``jarvis/pyaudio_pkg`` was removed in the launcher
+    clean-up — if this import fails, install it into the project venv:
+    ``server\\.venv\\Scripts\\python.exe -m pip install pyaudio==0.2.14``
+    """
+    try:
+        import pyaudio
+    except ImportError as exc:  # pragma: no cover - environment problem
+        raise RuntimeError(
+            "pyaudio 未安装，麦克风录音不可用。请在项目 venv 执行："
+            "server\\.venv\\Scripts\\python.exe -m pip install pyaudio==0.2.14"
+        ) from exc
     return pyaudio
 
 

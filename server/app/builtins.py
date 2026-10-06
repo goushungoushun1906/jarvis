@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
+import unicodedata
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 
@@ -84,6 +85,7 @@ def _extract_bing_results(html: str, max_results: int) -> list[dict]:
 
 class WebSearchTool(BaseTool):
     name = "web_search"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
         "Search the web for current information, news, facts, or answers. "
         "Returns search result titles, URLs, and content summaries. "
@@ -311,6 +313,7 @@ class CodeExecutionTool(BaseTool):
 
 class SystemInfoTool(BaseTool):
     name = "system_info"
+    concurrency_safe = True  # read-only: may run in parallel
     description = "Get system information like time, date, OS details."
     parameters_schema = {
         "type": "object",
@@ -348,7 +351,12 @@ class SystemInfoTool(BaseTool):
 
 class CalculatorTool(BaseTool):
     name = "calculator"
-    description = "Evaluate a mathematical expression. Only use for math calculations."
+    concurrency_safe = True  # read-only: may run in parallel
+    description = (
+        "Evaluate a mathematical expression. Only use for math calculations. "
+        "Pass a plain ASCII expression using * / + - and ** for powers; "
+        "do not use thousands separators."
+    )
     parameters_schema = {
         "type": "object",
         "properties": {
@@ -371,13 +379,52 @@ class CalculatorTool(BaseTool):
         r")+$"
     )
 
+    # Symbols NFKC does *not* fold. Users (and models echoing the user's
+    # wording) routinely paste ``×`` / ``÷`` straight out of a chat message;
+    # rejecting them wastes a whole extra LLM round trip on a retry.
+    _OPERATOR_ALIASES = str.maketrans(
+        {
+            "×": "*", "✕": "*", "✖": "*", "∗": "*", "·": "*", "⋅": "*",
+            "÷": "/", "∕": "/",
+            "−": "-", "–": "-", "—": "-",
+            "^": "**",  # calculators mean power, not Python's bitwise xor
+        }
+    )
+
+    # ``1,234,567`` passes the whitelist but evaluates to the *tuple*
+    # ``(1, 234, 567)`` — a silent wrong answer. Drop separators that sit
+    # between digit groups. ``round(x, 2)`` keeps its comma: the lookahead
+    # requires three digits immediately after it.
+    _THOUSAND_SEP = re.compile(r"(?<=\d),(?=\d{3}(?!\d))")
+
+    @classmethod
+    def _normalize(cls, expression: str) -> str:
+        """Fold full-width forms and typographic operators down to ASCII."""
+        text = unicodedata.normalize("NFKC", expression).strip()
+        text = text.translate(cls._OPERATOR_ALIASES)
+        text = cls._THOUSAND_SEP.sub("", text)
+        return re.sub(r"\s+", " ", text).strip()
+
     async def execute(self, expression: str) -> ToolResult:
         # Security: validate characters before eval
-        cleaned = expression.strip()
+        cleaned = self._normalize(expression)
         if not self._SAFE_TOKENS.match(cleaned):
+            allowed_punct = set("+-*/().,%")
+            bad = sorted(
+                {
+                    ch
+                    for ch in cleaned
+                    if not ch.isalnum() and not ch.isspace() and ch not in allowed_punct
+                }
+            )
+            detail = (
+                f" Unsupported character(s): {' '.join(bad)}."
+                if bad
+                else " Unsupported function or symbol name."
+            )
             return ToolResult(
-                "Expression contains disallowed characters. "
-                "Only numbers, +-*/.() and math functions (sin, cos, sqrt, etc.) are allowed.",
+                "Expression contains disallowed characters." + detail
+                + " Only numbers, +-*/(). and math functions (sin, cos, sqrt, etc.) are allowed.",
                 success=False,
             )
 
@@ -409,11 +456,23 @@ class CalculatorTool(BaseTool):
 
         try:
             result = eval(cleaned, safe_globals, safe_locals)  # noqa: S307
-            return ToolResult(f"{cleaned} = {result}")
         except ZeroDivisionError:
             return ToolResult("Error: Division by zero.", success=False)
         except Exception as e:
             return ToolResult(f"Error evaluating expression: {e}", success=False)
+
+        # Safety net for anything the normalisation above did not catch: a
+        # multi-value result means the expression was read as a tuple, which
+        # would otherwise be reported as a plausible-looking number.
+        if isinstance(result, (tuple, list, set, frozenset, dict)):
+            return ToolResult(
+                "Error: the expression resolved to multiple values — "
+                "check for stray commas (thousands separators are not supported).",
+                success=False,
+            )
+        if isinstance(result, float) and result.is_integer():
+            result = int(result)
+        return ToolResult(f"{cleaned} = {result}")
 
 
 # ------------------------------------------------------------------
@@ -505,10 +564,14 @@ class _HTMLTextExtractor(HTMLParser):
 
 class WebFetchTool(BaseTool):
     name = "web_fetch"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
         "Fetch and extract text content from a web page URL. "
         "Returns the page's main text content (stripped of HTML). "
-        "Use this to read the full content of a web page."
+        "Use this to read the full content of a web page. "
+        "Cheaper than browser_open but does NOT run JavaScript — for "
+        "JS-rendered/SPA pages use browser_open instead. Use ONE of the two, "
+        "never both for the same URL."
     )
     parameters_schema = {
         "type": "object",

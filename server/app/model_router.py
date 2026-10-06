@@ -17,6 +17,7 @@ import logging
 from .config import settings
 from .database import get_model_profiles
 from .models import DEFAULT_TIER_MAP, Tier
+from .model_names import normalize_model_id
 
 logger = logging.getLogger("jarvis")
 
@@ -172,9 +173,14 @@ def apply_profile_to_settings(profile: dict) -> None:
 
 
 def profile_to_api_credentials(profile: dict) -> tuple[str, str, str]:
-    """Return (base_url, api_key, model_id) for a profile."""
+    """Return (base_url, api_key, model_id) for a profile.
+
+    The model id is passed through :func:`normalize_model_id` so profiles saved
+    with a marketing-style name (e.g. ``DeepSeek-V4.1-Flash``) still resolve to
+    the id the gateway actually accepts.
+    """
     api_key = profile.get("api_key") or settings.llm_api_key
-    return profile["base_url"], api_key, profile["model"]
+    return profile["base_url"], api_key, normalize_model_id(profile["model"])
 
 
 def get_profile_tier(profile_id: str) -> Tier:

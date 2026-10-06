@@ -1,0 +1,236 @@
+.scheduler-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.scheduler-panel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  width: 480px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.scheduler-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.scheduler-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.scheduler-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+}
+
+.scheduler-close:hover { background: #f3f4f6; color: #111827; }
+
+.scheduler-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.scheduler-loading,
+.scheduler-empty,
+.scheduler-error {
+  text-align: center;
+  padding: 32px 16px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.scheduler-error { color: #ef4444; }
+
+/* Status bar */
+.scheduler-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.scheduler-status-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.scheduler-status-badge.running {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.scheduler-status-badge.stopped {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.scheduler-toggle-btn,
+.scheduler-digest-btn {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: inherit;
+}
+
+.scheduler-toggle-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+
+.scheduler-digest-btn {
+  background: rgba(79, 70, 229, 0.06);
+  border-color: rgba(79, 70, 229, 0.2);
+  color: #4f46e5;
+}
+
+.scheduler-digest-btn:hover:not(:disabled) { background: rgba(79, 70, 229, 0.12); }
+.scheduler-digest-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Job cards */
+.scheduler-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scheduler-job-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  transition: border-color 0.12s;
+}
+
+.scheduler-job-card:hover { border-color: #d1d5db; }
+
+.scheduler-job-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.scheduler-job-cron {
+  font-size: 11px;
+  color: #6b7280;
+  font-family: monospace;
+  margin-bottom: 2px;
+}
+
+.scheduler-job-meta {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.scheduler-job-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Toggle switch */
+.scheduler-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.scheduler-switch input { display: none; }
+
+.scheduler-switch-track {
+  width: 32px;
+  height: 18px;
+  background: #d1d5db;
+  border-radius: 9px;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.scheduler-switch input:checked + .scheduler-switch-track {
+  background: #4f46e5;
+}
+
+.scheduler-switch-track::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.scheduler-switch input:checked + .scheduler-switch-track::after {
+  transform: translateX(14px);
+}
+
+.scheduler-delete-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+}
+
+.scheduler-delete-btn:hover { background: #fee2e2; color: #ef4444; }

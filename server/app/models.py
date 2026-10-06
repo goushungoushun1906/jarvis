@@ -116,5 +116,27 @@ class ModelProfile(BaseModel):
     tier: Tier = "mid"  # fast / mid / deep routing tier
 
 
+class ModelProfileUpdate(BaseModel):
+    """Partial update for a saved model profile."""
+    name: str | None = None
+    model: str | None = None
+    base_url: str | None = None
+    api_key: str | None = None
+    provider: str | None = None
+    tier: Tier | None = None
+
+
+class ModelValidateRequest(BaseModel):
+    """Request to check whether a model id is accepted by a gateway.
+
+    ``base_url``/``api_key`` may be omitted when ``profile_id`` is supplied —
+    they are then resolved from the saved profile.
+    """
+    base_url: str = ""
+    model: str
+    api_key: str = ""  # if empty, fall back to the profile's / global key
+    profile_id: str | None = None  # resolve a missing base_url/api_key from here
+
+
 class SwitchModelRequest(BaseModel):
     profile_id: str  # which preset to switch to

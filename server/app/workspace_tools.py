@@ -102,6 +102,7 @@ class WorkspaceOpenTool(BaseTool):
 
 class WorkspaceListFilesTool(BaseTool):
     name = "workspace_list_files"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
         "List code and project files in the active workspace. "
         "Returns file paths relative to the workspace root."
@@ -137,6 +138,7 @@ class WorkspaceListFilesTool(BaseTool):
 
 class WorkspaceSearchTool(BaseTool):
     name = "workspace_search"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
         "Search for keywords across file names and contents in the active workspace. "
         "Returns matching file paths with line previews."
@@ -206,6 +208,7 @@ class WorkspaceSearchTool(BaseTool):
 
 class WorkspaceReadFileTool(BaseTool):
     name = "workspace_read_file"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
         "Read the contents of a file relative to the active workspace root. "
         "Use this to inspect code, configs, or documentation."

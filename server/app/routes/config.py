@@ -10,7 +10,15 @@ from fastapi import APIRouter, HTTPException
 from .. import database as db
 from .. import persona as persona_mod
 from ..config import settings
-from ..models import ModelConfig, ModelProfile, PersonaConfig, SwitchModelRequest
+from ..model_names import normalize_model_id, validate_model_id
+from ..models import (
+    ModelConfig,
+    ModelProfile,
+    ModelProfileUpdate,
+    ModelValidateRequest,
+    PersonaConfig,
+    SwitchModelRequest,
+)
 
 logger = logging.getLogger("jarvis")
 
@@ -115,6 +123,33 @@ async def api_add_model(body: ModelProfile):
     return body.model_dump()
 
 
+@router.put("/models/{profile_id}")
+async def api_update_model(profile_id: str, body: ModelProfileUpdate):
+    """Update an existing custom model profile. Built-in profiles cannot be modified."""
+    # Prevent modification of built-in profiles
+    builtin_ids = {p["id"] for p in db.BUILTIN_PROFILES}
+    if profile_id in builtin_ids:
+        raise HTTPException(400, "Cannot modify built-in profiles")
+
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    updated = await db.update_model_profile(profile_id, updates)
+    if not updated:
+        raise HTTPException(404, f"Model profile '{profile_id}' not found")
+
+    # If the updated profile is currently active, refresh runtime settings
+    profiles = await db.get_model_profiles()
+    active = next((p for p in profiles if p.get("is_active")), None)
+    if active and active["id"] == profile_id:
+        from ..config import settings
+        settings.llm_model = updated.get("model", settings.llm_model)
+        settings.llm_base_url = updated.get("base_url", settings.llm_base_url)
+        if updated.get("api_key"):
+            settings.llm_api_key = updated["api_key"]
+
+    logger.info("Updated model profile: %s", profile_id)
+    return updated
+
+
 @router.delete("/models/{profile_id}")
 async def api_delete_model(profile_id: str):
     """Delete a custom model profile."""
@@ -122,6 +157,35 @@ async def api_delete_model(profile_id: str):
     if not deleted:
         raise HTTPException(400, "Cannot delete built-in profiles")
     return {"deleted": True}
+
+
+@router.post("/models/validate")
+async def api_validate_model(body: ModelValidateRequest):
+    """Check whether *model* is an id the gateway actually accepts.
+
+    Returns the ids the gateway advertises plus the closest suggestion, so the
+    settings UI can offer a one-click fix instead of a vague failure later.
+    Never raises: an unreachable gateway reports ``valid: null``.
+    """
+    base_url = body.base_url
+    api_key = body.api_key
+
+    if (not base_url or not api_key) and body.profile_id:
+        profile = next(
+            (p for p in await db.get_model_profiles() if p.get("id") == body.profile_id),
+            None,
+        )
+        if profile:
+            base_url = base_url or profile.get("base_url", "")
+            api_key = api_key or profile.get("api_key", "")
+
+    api_key = api_key or settings.llm_api_key
+    if not base_url:
+        raise HTTPException(400, "base_url is required")
+
+    result = await validate_model_id(base_url, api_key, body.model)
+    result["model"] = body.model
+    return result
 
 
 @router.post("/models/switch")

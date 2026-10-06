@@ -45,6 +45,147 @@
   box-shadow: 0 0 10px rgba(0, 212, 255, 0.08);
 }
 
+/* ====== Model card actions ====== */
+.model-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.model-card:hover .model-card-actions {
+  opacity: 1;
+}
+
+.model-card-action {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted, #8a9bb8);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.model-card-action:hover {
+  background: rgba(0, 212, 255, 0.12);
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.25);
+}
+
+.model-card-action.delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+/* ====== Edit model dialog ====== */
+.model-edit-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  backdrop-filter: blur(2px);
+  animation: model-edit-fade-in 0.2s ease;
+}
+
+@keyframes model-edit-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.model-edit-dialog {
+  width: min(92vw, 440px);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--bg-elevated, #181a20);
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  animation: model-edit-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes model-edit-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.model-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+}
+
+.model-edit-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #e8f0fe);
+}
+
+.model-edit-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #8a9bb8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.model-edit-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary, #e8f0fe);
+}
+
+.model-edit-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.model-edit-actions {
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+}
+
+.model-edit-actions .setting-btn {
+  flex: 1;
+}
+
+.model-edit-actions .setting-btn.primary {
+  background: var(--accent-blue, #4f46e5);
+  color: #ffffff;
+}
+
+.model-edit-actions .setting-btn.primary:hover:not(:disabled) {
+  background: var(--accent-blue-light, #6366f1);
+}
+
+.model-edit-actions .setting-btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ====== Cost Dashboard ====== */
 .cost-dashboard {
   padding: 16px;
@@ -328,4 +469,90 @@
 
 .cost-retry-btn:hover {
   background: rgba(255, 68, 68, 0.1);
+}
+
+/* ====== Model ID validation (Phase 17.10) ====== */
+
+.model-id-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-id-row .setting-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-id-check-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 11px;
+  white-space: nowrap;
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.12));
+  background: var(--bg-glass-subtle, rgba(255, 255, 255, 0.06));
+  color: var(--text-secondary, #777);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.model-id-check-btn:hover:not(:disabled) {
+  border-color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue-light, #60a5fa);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.model-id-check-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.setting-hint {
+  color: var(--text-muted, #888);
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.model-name-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.model-name-warning-text {
+  color: #f59e0b;
+  font-size: 11px;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.model-name-fix-btn {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.16);
+  color: #f59e0b;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-name-fix-btn:hover {
+  background: rgba(245, 158, 11, 0.28);
 }

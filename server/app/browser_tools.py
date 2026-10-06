@@ -95,6 +95,35 @@ def _strip_text(text: str, max_length: int) -> str:
     return text
 
 
+def _frame_policy(response) -> tuple[bool, str]:
+    """Report whether the fetched page may be framed by the renderer.
+
+    A successful headless fetch says nothing about whether an ``<iframe>`` will
+    show the page: ``X-Frame-Options`` and CSP ``frame-ancestors`` are enforced
+    by the browser drawing the iframe, and a blocked frame renders blank. The
+    response headers are the only reliable signal, so surface them to the UI.
+    """
+    if response is None:
+        return True, ""  # no response object (e.g. about:blank) — nothing to block on
+    headers = {k.lower(): v for k, v in (response.headers or {}).items()}
+
+    xfo = headers.get("x-frame-options", "").lower()
+    if "deny" in xfo:
+        return False, "该站点设置了 X-Frame-Options: DENY"
+    if "sameorigin" in xfo:
+        return False, "该站点设置了 X-Frame-Options: SAMEORIGIN"
+
+    csp = headers.get("content-security-policy", "")
+    if "frame-ancestors" in csp:
+        directive = csp.split("frame-ancestors", 1)[1].split(";", 1)[0].strip()
+        if directive:
+            if "'none'" in directive or directive == "'self'":
+                return False, f"该站点设置了 CSP frame-ancestors {directive}"
+            if directive != "*":
+                return False, f"该站点限制了可嵌入来源（frame-ancestors {directive}）"
+    return True, ""
+
+
 # ------------------------------------------------------------------
 # browser_open
 # ------------------------------------------------------------------
@@ -103,9 +132,12 @@ def _strip_text(text: str, max_length: int) -> str:
 class BrowserOpenTool(BaseTool):
     name = "browser_open"
     description = (
-        "Open a URL in a headless browser and return the page title and "
-        "main text content. Use this when the user asks to browse a specific "
-        "web page."
+        "Open a URL in a headless browser and return the page title AND the "
+        "main text content. This is the one-shot way to read a web page: for "
+        "'open/look up/check this page' requests call ONLY this tool — the body "
+        "text you need is already in the result. Do NOT follow it with "
+        "browser_extract (same content, redundant) or browser_screenshot "
+        "(unless the user explicitly asked to see the page visually)."
     )
     parameters_schema = {
         "type": "object",
@@ -126,14 +158,23 @@ class BrowserOpenTool(BaseTool):
     async def execute(self, url: str, max_length: int = 3000) -> ToolResult:
         try:
             page = await browser_manager.get_page()
-            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            response = await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             # Wait a bit for dynamic content
             await page.wait_for_timeout(500)
             title = await page.title()
             body_text = await page.inner_text("body")
+
+            # Resolve redirects and framing policy so the right-hand display
+            # panel can mirror the page the user actually reached.
+            embeddable, block_reason = _frame_policy(response)
             return ToolResult(
                 f"Title: {title}\n\n{_strip_text(body_text, max_length)}",
-                metadata={"url": url, "title": title},
+                metadata={
+                    "url": page.url or url,
+                    "title": title,
+                    "embeddable": embeddable,
+                    "embed_block_reason": block_reason,
+                },
             )
         except Exception as e:
             logger.error("browser_open error: %s", e)
@@ -147,9 +188,13 @@ class BrowserOpenTool(BaseTool):
 
 class BrowserExtractTool(BaseTool):
     name = "browser_extract"
+    concurrency_safe = True  # read-only: may run in parallel
     description = (
-        "Extract readable text from the current browser page or a given URL. "
-        "Supports CSS selector targeting."
+        "Extract readable text from the current browser page or a given URL, "
+        "optionally narrowed to a CSS selector. Only use this when you need a "
+        "SPECIFIC region of a page, or need to re-read a page after navigating "
+        "or clicking. Do NOT call it right after browser_open: that result "
+        "already contains the page body."
     )
     parameters_schema = {
         "type": "object",
@@ -205,7 +250,9 @@ class BrowserScreenshotTool(BaseTool):
     name = "browser_screenshot"
     description = (
         "Take a screenshot of the current browser page or a given URL. "
-        "Returns a base64 PNG image."
+        "Returns a base64 PNG image. ONLY call this when the user explicitly "
+        "asks to see how the page looks; for text questions prefer "
+        "browser_open, which already returns the page content."
     )
     parameters_schema = {
         "type": "object",

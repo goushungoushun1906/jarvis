@@ -113,16 +113,27 @@ class MCPServerConnection:
 
             except Exception as e:
                 logger.error("Failed to connect MCP server '%s': %s", self.config.name, e)
-                await self.disconnect()
+                # NOTE: must not call ``disconnect()`` here — it re-acquires
+                # ``self._lock``, which this task already holds, and
+                # ``asyncio.Lock`` is not reentrant. Doing so deadlocked the
+                # whole backend startup whenever an MCP server failed to launch.
+                await self._close()
                 return False
+
+    async def _close(self) -> None:
+        """Release connection resources.
+
+        Caller must already hold ``self._lock``.
+        """
+        self.session = None
+        self.tools = []
+        await self._exit_stack.aclose()
+        self._exit_stack = AsyncExitStack()
 
     async def disconnect(self) -> None:
         """Close the connection."""
         async with self._lock:
-            self.session = None
-            self.tools = []
-            await self._exit_stack.aclose()
-            self._exit_stack = AsyncExitStack()
+            await self._close()
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Call a tool on this server."""

@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from .. import database as db
 from .. import memory as mem
 from .. import persona as persona_mod
-from ..agent import agent_chat
+from ..agent import agent_chat, agent_chat_stream, strip_tool_call_json
 from ..config import settings
 from ..llm import LLMError, call_llm
 from ..models import (
@@ -24,10 +24,27 @@ from ..models import (
     ForkRequest,
     MessageOut,
 )
+from ..tools import registry as tool_registry
 
 logger = logging.getLogger("jarvis")
 
 router = APIRouter(prefix="/api", tags=["chat"])
+
+# Phase 17.3 — SSE heartbeat: comments are emitted when no agent event has
+# been produced for this long, keeping intermediaries (proxies, antivirus,
+# the Electron layer) from killing an idle connection during long tool runs.
+HEARTBEAT_INTERVAL_SECONDS = 15.0
+
+
+def _sse(event: str, payload: dict) -> str:
+    """Format one named SSE event.
+
+    Every event carries BOTH an ``event:`` line (new contract, Phase 17.3)
+    and a ``data:`` JSON line (legacy contract). The current frontend parses
+    only ``data:`` lines, so old clients keep working unchanged; new clients
+    can dispatch on ``event:``.
+    """
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n"
 
 
 # ------------------------------------------------------------------
@@ -176,7 +193,7 @@ async def upload_image(file: UploadFile = File(...)):
 @router.post("/upload/file")
 async def upload_file(file: UploadFile = File(...)):
     """Upload file, extract text content. Supports TXT, PDF, MD, CSV, JSON, DOC, DOCX, XLS, XLSX."""
-    allowed_extensions = {".txt", ".pdf", ".md", ".csv", ".json", ".doc", ".docx", ".xls", ".xlsx"}
+    allowed_extensions = {".txt", ".pdf", ".md", ".csv", ".json", ".doc", ".docx", ".xls", ".xlsx", ".pptx", ".ppt"}
     filename = file.filename or "unknown"
     ext = os.path.splitext(filename)[1].lower()
     logger.info("[upload_file] name=%s ext=%s content_type=%s", filename, ext, file.content_type)
@@ -184,6 +201,8 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(400, f"不支持的文件类型: {ext}")
     content_bytes = await file.read()
     logger.info("[upload_file] read %d bytes", len(content_bytes))
+    b64 = base64.b64encode(content_bytes).decode("utf-8")
+    data_url = f"data:{file.content_type or 'application/octet-stream'};base64,{b64}"
     if len(content_bytes) > 20 * 1024 * 1024:
         raise HTTPException(400, "文件大小不能超过 20MB")
 
@@ -281,7 +300,7 @@ async def upload_file(file: UploadFile = File(...)):
     if len(extracted_text) > 50000:
         extracted_text = extracted_text[:50000] + f"\n\n[... 文本已截断，共 {len(extracted_text)} 字 ...]"
 
-    return {"filename": filename, "mime_type": file.content_type or "", "extracted_text": extracted_text, "char_count": len(extracted_text)}
+    return {"filename": filename, "mime_type": file.content_type or "", "extracted_text": extracted_text, "char_count": len(extracted_text), "data_url": data_url}
 
 
 # ------------------------------------------------------------------
@@ -420,40 +439,127 @@ async def api_chat_stream(req: ChatRequest):
         )
 
     async def event_generator():
+        """Phase 17.3 — consume AgentEvents and emit named SSE frames.
+
+        Mapping (AgentEvent → SSE):
+            text       → event: text        data: {"content": delta}
+            tool_call  → event: tool_call   data: {"tool_call": {...}}
+            tool_result→ event: tool_result data: {"tool_result": {...}}
+            done       → event: done        data: {"conversation_id", "tool_calls"}
+            error      → event: error       data: {"error": msg}
+
+        ``data: [DONE]`` terminates the stream in both success and error paths.
+        The assistant message is persisted only on the ``done`` path.
+        """
         full_content: list[str] = []
         tool_log: list[dict] = []
-        try:
-            # Use run_agent to handle tool calls (web_search, code_execution, etc.)
-            # run_agent executes the agent loop internally and returns the final text
-            from ..agent import agent_chat
 
-            agent_result, tool_log = await agent_chat(messages)
-            if agent_result:
-                # Stream the result in chunks for nice UX
-                chunk_size = 20  # characters per chunk for streaming effect
-                for i in range(0, len(agent_result), chunk_size):
-                    chunk = agent_result[i:i+chunk_size]
-                    full_content.append(chunk)
-                    yield f"data: {json.dumps({'content': chunk})}\n\n"
-                    await asyncio.sleep(0.02)  # Small delay for streaming effect
-            else:
-                logger.warning("agent_chat returned empty result in stream endpoint")
-                error_msg = "模型未返回任何内容，请检查 API 配置或模型可用性。"
-                yield f"data: {json.dumps({'content': error_msg})}\n\n"
-                full_content.append(error_msg)
+        def _record_tool_log_entry(call_id: str, name: str, args: dict) -> dict:
+            entry = {
+                "call_id": call_id,
+                "tool": name,
+                "args": args,
+                "result": "",
+                "success": False,
+            }
+            tool_log.append(entry)
+            return entry
+
+        try:
+            agen = agent_chat_stream(messages)
+            while True:
+                try:
+                    ev = await asyncio.wait_for(
+                        agen.__anext__(), timeout=HEARTBEAT_INTERVAL_SECONDS
+                    )
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+                    continue
+                except StopAsyncIteration:
+                    break
+
+                if ev.kind == "text":
+                    full_content.append(ev.delta)
+                    yield _sse("text", {"content": ev.delta})
+
+                elif ev.kind == "tool_call":
+                    tool = tool_registry.get(ev.name)
+                    requires_approval = bool(
+                        getattr(tool, "requires_approval", False)
+                    )  # backend-side judgement, frontend is fallback only
+                    _record_tool_log_entry(ev.call_id, ev.name, ev.args)
+                    yield _sse(
+                        "tool_call",
+                        {
+                            "tool_call": {
+                                "id": ev.call_id,
+                                "tool": ev.name,
+                                "args": ev.args,
+                                "status": "running",
+                                "requires_approval": requires_approval,
+                            }
+                        },
+                    )
+
+                elif ev.kind == "tool_result":
+                    status = "success" if ev.success else "error"
+                    for entry in reversed(tool_log):
+                        if entry["call_id"] == ev.call_id and entry["result"] == "":
+                            entry["result"] = ev.result
+                            entry["success"] = ev.success
+                            break
+                    else:
+                        _record_tool_log_entry(ev.call_id, ev.name, ev.args)
+                        tool_log[-1]["result"] = ev.result
+                        tool_log[-1]["success"] = ev.success
+                    yield _sse(
+                        "tool_result",
+                        {
+                            "tool_result": {
+                                "id": ev.call_id,
+                                "tool": ev.name,
+                                "result": ev.result,
+                                "success": ev.success,
+                                "status": status,
+                                "duration_ms": ev.duration_ms,
+                                "metadata": ev.metadata,
+                            }
+                        },
+                    )
+
+                elif ev.kind == "done":
+                    yield _sse(
+                        "done",
+                        {
+                            "conversation_id": conversation_id,
+                            "tool_calls": tool_log or None,
+                        },
+                    )
+                    break
+
+                elif ev.kind == "error":
+                    logger.error("Agent stream error: %s", ev.message)
+                    yield _sse("error", {"error": ev.message})
+                    yield "data: [DONE]\n\n"
+                    return
+
             yield "data: [DONE]\n\n"
-        except LLMError as e:
-            logger.error("Stream error: %s", e.message)
-            yield f"data: {json.dumps({'error': e.message, 'detail': e.detail})}\n\n"
-            return
+        except asyncio.CancelledError:
+            # Client disconnected mid-stream; persist nothing partial.
+            raise
         except Exception as e:
-            logger.error("Stream unexpected error: %s", e)
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            logger.exception("Stream unexpected error: %s", e)
+            yield _sse("error", {"error": str(e)})
+            yield "data: [DONE]\n\n"
             return
 
         # Save the full assistant response after streaming completes
         if conversation_id and full_content:
-            await _save_assistant_message(conversation_id, "".join(full_content))
+            # Strip tool-call JSON the model embedded in the text body, so the
+            # persisted history matches what the user saw.
+            await _save_assistant_message(
+                conversation_id, strip_tool_call_json("".join(full_content))
+            )
 
         # Auto-extract memories from user messages after streaming
         if conversation_id:
@@ -475,5 +581,7 @@ async def api_chat_stream(req: ChatRequest):
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            # Disable proxy buffering so events reach the browser immediately
+            "X-Accel-Buffering": "no",
         },
     )

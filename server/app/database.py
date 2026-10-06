@@ -548,6 +548,21 @@ async def add_model_profile(profile: dict) -> dict:
     return profile
 
 
+async def update_model_profile(profile_id: str, updates: dict) -> dict | None:
+    """Update an existing custom model profile. Built-ins cannot be modified."""
+    saved = await get_setting(_MODEL_PROFILES_KEY)
+    custom_profiles = json.loads(saved) if saved else []
+    existing = next((p for p in custom_profiles if p["id"] == profile_id), None)
+    if not existing:
+        return None
+
+    # Merge updates while preserving the original id
+    merged = {**existing, **updates, "id": profile_id}
+    new_profiles = [merged if p["id"] == profile_id else p for p in custom_profiles]
+    await set_setting(_MODEL_PROFILES_KEY, json.dumps(new_profiles))
+    return merged
+
+
 async def delete_model_profile(profile_id: str) -> bool:
     """Delete a custom model profile. Built-ins are not stored so nothing to delete."""
     saved = await get_setting(_MODEL_PROFILES_KEY)

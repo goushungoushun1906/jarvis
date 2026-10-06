@@ -17,6 +17,8 @@ import type {
   CostsByModel,
   CostsByDay,
   Skill,
+  ToolCallRecord,
+  StreamDonePayload,
 } from "./types";
 
 const API_BASE = "http://127.0.0.1:18200";
@@ -89,12 +91,67 @@ export async function sendChat(
 }
 
 // ====== Chat Stream ======
+/**
+ * One Server-Sent Events frame: an optional `event:` name plus its `data:`
+ * payload.
+ *
+ * Phase 17.3 — the backend emits BOTH lines for every event, so a client that
+ * only reads `data:` (the pre-17.3 frontend) keeps working unchanged.
+ */
+interface SSEFrame {
+  event: string | null;
+  data: string;
+}
+
+/**
+ * Split an SSE byte stream into complete frames.
+ *
+ * Frames are separated by a blank line; a trailing partial frame is returned
+ * as `rest` and re-parsed once more bytes arrive. Heartbeat comments
+ * (`: ping`) carry no `data:` line and are dropped here.
+ */
+function parseSSEFrames(buffer: string): { frames: SSEFrame[]; rest: string } {
+  const parts = buffer.split("\n\n");
+  const rest = parts.pop() ?? "";
+  const frames: SSEFrame[] = [];
+
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    let event: string | null = null;
+    let data: string | null = null;
+    for (const line of part.split("\n")) {
+      if (line.startsWith("event:")) {
+        event = line.slice(6).trim();
+      } else if (line.startsWith("data:")) {
+        data = line.slice(5).trim();
+      }
+    }
+    if (data !== null) frames.push({ event, data });
+  }
+  return { frames, rest };
+}
+
+/** Fallback for payloads with no `event:` line — infer from the data keys. */
+function inferEventName(payload: Record<string, unknown>): string | null {
+  if (typeof payload.content === "string") return "text";
+  if (payload.tool_call) return "tool_call";
+  if (payload.tool_result) return "tool_result";
+  if (payload.error) return "error";
+  if (payload.conversation_id !== undefined || payload.tool_calls !== undefined) return "done";
+  if (payload.thinking) return "thinking";
+  return null;
+}
+
+// ====== Chat Stream ======
 export async function streamChat(
   payload: ChatRequest,
   signal: AbortSignal,
   onChunk: (content: string) => void,
   onError: (err: string) => void,
-  onDone: () => void
+  onDone: (done?: StreamDonePayload) => void,
+  onToolCall?: (toolCall: ToolCallRecord) => void,
+  onToolResult?: (toolCall: ToolCallRecord) => void,
+  onThinking?: (thinking: string) => void
 ): Promise<void> {
   const resp = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
@@ -112,7 +169,15 @@ export async function streamChat(
   if (!reader) throw new Error("No response body");
 
   const decoder = new TextDecoder();
-  let buffer = ""; // accumulate partial lines across chunks
+  let buffer = ""; // accumulate partial frames across network chunks
+  let donePayload: StreamDonePayload | undefined;
+  let finished = false;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    onDone(donePayload);
+  };
 
   try {
     while (true) {
@@ -120,46 +185,52 @@ export async function streamChat(
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      // Keep the last element as it may be an incomplete line
-      buffer = lines.pop() || "";
+      const { frames, rest } = parseSSEFrames(buffer);
+      buffer = rest;
 
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") {
-            onDone();
-            return;
+      for (const frame of frames) {
+        if (frame.data === "[DONE]") {
+          finish();
+          return;
+        }
+
+        let parsed: Record<string, unknown>;
+        try {
+          parsed = JSON.parse(frame.data);
+        } catch {
+          continue; // skip non-JSON lines
+        }
+
+        switch (frame.event ?? inferEventName(parsed)) {
+          case "text":
+            if (typeof parsed.content === "string") onChunk(parsed.content);
+            break;
+          case "tool_call":
+            onToolCall?.(parsed.tool_call as ToolCallRecord);
+            break;
+          case "tool_result":
+            onToolResult?.(parsed.tool_result as ToolCallRecord);
+            break;
+          case "thinking":
+            if (typeof parsed.thinking === "string") onThinking?.(parsed.thinking);
+            break;
+          case "error": {
+            const detail =
+              typeof parsed.detail === "string" && parsed.detail ? ` (${parsed.detail})` : "";
+            onError(String(parsed.error) + detail);
+            break;
           }
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.error) {
-              const detail = parsed.detail ? ` (${parsed.detail})` : "";
-              onError(parsed.error + detail);
-            } else if (parsed.content) {
-              onChunk(parsed.content);
-            }
-          } catch {
-            // skip non-JSON lines
-          }
+          case "done":
+            // Kept until the stream terminates; surfaced via onDone.
+            donePayload = parsed as StreamDonePayload;
+            break;
+          default:
+            break;
         }
       }
     }
-    // Process any remaining data in buffer
-    if (buffer.trim()) {
-      if (buffer.trim().startsWith("data: ")) {
-        const data = buffer.trim().slice(6).trim();
-        if (data === "[DONE]") {
-          onDone();
-        } else {
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) onChunk(parsed.content);
-          } catch { /* skip */ }
-        }
-      }
-    }
-    onDone();
+    // Stream ended without [DONE] (e.g. connection closed) — still notify.
+    finish();
   } finally {
     reader.releaseLock();
   }
@@ -211,9 +282,49 @@ export async function addModel(model: Omit<ModelProfile, "is_active">): Promise<
   return resp.json();
 }
 
+export async function updateModelProfile(profileId: string, model: Partial<Omit<ModelProfile, "is_active" | "id">>): Promise<ModelProfile> {
+  const resp = await fetch(`${API_BASE}/api/config/models/${profileId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(model),
+  });
+  if (!resp.ok) throw new Error("Failed to update model");
+  return resp.json();
+}
+
 export async function deleteModel(profileId: string): Promise<void> {
   const resp = await fetch(`${API_BASE}/api/config/models/${profileId}`, { method: "DELETE" });
   if (!resp.ok) throw new Error("Failed to delete model");
+}
+
+export interface ModelNameCheck {
+  model: string;
+  /** true = gateway accepts it, false = rejected, null = could not be checked */
+  valid: boolean | null;
+  /** id actually sent after server-side alias normalisation */
+  normalized: string;
+  /** ids the gateway advertises (empty when unreachable) */
+  available: string[];
+  /** closest id to use instead, when invalid */
+  suggestion: string | null;
+  checked: boolean;
+  message: string;
+}
+
+/** Ask the backend whether a gateway actually accepts this model id. */
+export async function validateModelName(params: {
+  model: string;
+  base_url?: string;
+  api_key?: string;
+  profile_id?: string;
+}): Promise<ModelNameCheck> {
+  const resp = await fetch(`${API_BASE}/api/config/models/validate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) throw new Error("Failed to validate model name");
+  return resp.json();
 }
 
 // ====== Voice / TTS ======

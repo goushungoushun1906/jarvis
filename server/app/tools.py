@@ -32,6 +32,19 @@ class BaseTool(ABC):
     description: str = ""
     parameters_schema: dict = {}  # JSON Schema
 
+    # Phase 17.2 — tools marked safe are purely read-only (no filesystem
+    # writes, no process spawning, no shared mutable state such as a browser
+    # session). The agent loop may run several safe tools concurrently within
+    # the same round. When in doubt, leave this False.
+    concurrency_safe: bool = False
+
+    # Phase 17.3 — backend-side approval judgement (single source of truth).
+    # The value is sent with every ``tool_call`` SSE event so the frontend no
+    # longer hardcodes its own risky-tool list. NOTE: this flag is *advisory*
+    # metadata only — execution is not gated on it yet. Enforcement
+    # (default-deny + explicit user consent) is deferred to A6.
+    requires_approval: bool = False
+
     @abstractmethod
     async def execute(self, **kwargs) -> ToolResult:
         ...
