@@ -173,8 +173,23 @@ async def agent_chat_stream(messages: list[dict]) -> AsyncGenerator[AgentEvent, 
 
         if parallel:
             # Results are yielded as each finishes, not in call order.
-            for fut in asyncio.as_completed([asyncio.create_task(_run(i)) for i in parallel]):
-                await fut  # _run stores into results[]; events emitted below
+            tasks = [asyncio.create_task(_run(i)) for i in parallel]
+            try:
+                for fut in asyncio.as_completed(tasks):
+                    await fut  # _run stores into results[]; events emitted below
+            except BaseException:
+                # A6 / Phase 17 follow-up: the consumer (SSE connection) can go
+                # away mid-round — client disconnect, generator closed, or the
+                # request task cancelled. Without this the tasks below keep
+                # running detached: LLM calls keep billing and side-effecting
+                # tools keep executing with nobody left to read the result.
+                for t in tasks:
+                    t.cancel()
+                try:
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                except BaseException:  # pragma: no cover - defensive
+                    pass
+                raise
             for i in parallel:
                 yield _tool_result_event(tool_calls[i], results[i], durations[i])
 

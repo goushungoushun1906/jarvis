@@ -465,8 +465,8 @@ async def api_chat_stream(req: ChatRequest):
             tool_log.append(entry)
             return entry
 
+        agen = agent_chat_stream(messages)
         try:
-            agen = agent_chat_stream(messages)
             while True:
                 try:
                     ev = await asyncio.wait_for(
@@ -546,12 +546,23 @@ async def api_chat_stream(req: ChatRequest):
             yield "data: [DONE]\n\n"
         except asyncio.CancelledError:
             # Client disconnected mid-stream; persist nothing partial.
+            # aclose() (in the finally below) is what actually stops the agent
+            # loop — without it the LLM request and any in-flight tool keep
+            # running detached until GC happens to collect the generator.
+            logger.info("Client disconnected mid-stream; tearing down agent loop.")
             raise
         except Exception as e:
             logger.exception("Stream unexpected error: %s", e)
             yield _sse("error", {"error": str(e)})
             yield "data: [DONE]\n\n"
             return
+        finally:
+            try:
+                await agen.aclose()
+            except (RuntimeError, asyncio.CancelledError):
+                pass
+            except Exception:  # pragma: no cover - defensive
+                logger.debug("agent stream close error", exc_info=True)
 
         # Save the full assistant response after streaming completes
         if conversation_id and full_content:

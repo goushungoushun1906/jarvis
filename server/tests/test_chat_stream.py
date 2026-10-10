@@ -35,12 +35,15 @@ from app.routes import chat as chat_mod  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="session")
+# Function scope, not session: see the note in tests/test_api.py — a
+# session-scoped async fixture here is the reason the full-suite run used to
+# blow up with anyio.ClosedResourceError while per-file runs passed.
+@pytest.fixture
 def anyio_backend():
     return "asyncio"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 async def app():
     from main import app as fastapi_app
 
@@ -51,7 +54,10 @@ async def app():
 @pytest.fixture
 async def client(app: Any) -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
+    # Loopback, not httpx's default "testserver": since A6 the backend refuses
+    # any non-loopback Host header, and the real client always connects over
+    # 127.0.0.1 — so the tests have to speak the same way the app does.
+    async with AsyncClient(transport=transport, base_url="http://127.0.0.1:18200") as ac:
         yield ac
 
 

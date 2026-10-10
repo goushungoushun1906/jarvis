@@ -35,12 +35,19 @@ os.environ.setdefault("JARVIS_MODE", "dev")
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="session")
+# NOTE: scope is deliberately left at the default (function), not "session".
+# A session-scoped async fixture is built on anyio's session event loop while
+# every test runs on its own function loop, so the app's lifespan resources get
+# reused across loops — which fails with anyio.ClosedResourceError as soon as
+# another module using the same pattern runs in the same pytest session.
+# Starting lifespan per test costs a second or two and buys a suite that can
+# actually be run as a whole.
+@pytest.fixture
 def anyio_backend():
     return "asyncio"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 async def app():
     """Create the FastAPI app instance with lifespan managed manually."""
     from main import app as fastapi_app
@@ -52,9 +59,14 @@ async def app():
 
 @pytest.fixture
 async def client(app: Any) -> AsyncGenerator[AsyncClient, None]:
-    """Provide an ``httpx.AsyncClient`` bound to the ASGI app."""
+    """Provide an ``httpx.AsyncClient`` bound to the ASGI app.
+
+    Loopback, not httpx's default "testserver": since A6 the backend refuses
+    any non-loopback Host header, and the real client always connects over
+    127.0.0.1 — so the tests have to speak the same way the app does.
+    """
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
+    async with AsyncClient(transport=transport, base_url="http://127.0.0.1:18200") as ac:
         yield ac
 
 

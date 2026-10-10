@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -54,6 +55,65 @@ def _set_workspace(path: str) -> ToolResult:
 
 def _get_workspace() -> Path | None:
     return _active_workspace
+
+
+# ----------------------------------------------------------------------
+# A6 (minimal fix set) — command safety filter
+# ----------------------------------------------------------------------
+# Matching is deliberately blunt for the irreversible categories (boot
+# records, credentials, service control) but deliberately *narrow* for
+# everyday dev commands: `rm -rf node_modules` stays allowed, `rm -rf /`
+# does not. A false positive costs one refused command the user can reword;
+# a false negative costs the workspace.
+_DESTRUCTIVE_SUBSTRINGS = (
+    # OS / boot / disk
+    "format ", "diskpart", "bcdedit", "vssadmin", "wmic", "cipher /w",
+    "shutdown", "reboot",
+    # ownership / ACL / registry / accounts
+    "takeown", "icacls", "cacls", "attrib -r",
+    "reg delete", "reg add", "net user", "net localgroup",
+    # process & service control
+    "taskkill", "tskill", "net stop", "sc delete", "schtasks /delete",
+    # remote code execution
+    "iex", "invoke-expression", "certutil", "bitsadmin",
+    "-encodedcommand", "-enc ", "|sh", "| sh", "|bash", "| bash", "|cmd",
+    # fork bomb
+    ":(){",
+    # Windows force/quiet recursive delete
+    "rmdir /s", "rd /s /q", "del /f", "del /s", "del *.*",
+)
+
+# `rm -rf <target>` is fine for build output, fatal for anything absolute,
+# glob-expanded, or a variable/root path.
+_RM_RF_RISKY = re.compile(
+    r"\brm\s+-(?:r|rf|fr|R|RF)+\s+"
+    r"(?:--no-preserve-root\s+)?"
+    r"(?:"
+    # absolute / root / variable / glob — dangerous wherever it points
+    r"/|~|\*|[a-zA-Z]:[/\\]?|%[A-Za-z]+%|\$[A-Za-z_]+"
+    # bare "." or ".." as the whole target (but not ".venv", "../build")
+    r"|\.\.?(?=\s|$)"
+    r")"
+)
+
+# Downloading is legitimate; downloading *and then* writing or piping it is
+# the classic "curl | sh" shape and is not.
+_DOWNLOADERS = ("curl ", "curl.exe", "wget ", "iwr ", "invoke-webrequest")
+
+
+def _is_dangerous_command(command: str) -> bool:
+    """Return True if a workspace command should be refused outright."""
+    lowered = command.lower()
+    for s in _DESTRUCTIVE_SUBSTRINGS:
+        if s in lowered:
+            return True
+    if _RM_RF_RISKY.search(lowered):
+        return True
+    if any(d in lowered for d in _DOWNLOADERS) and (
+        "|" in command or ">" in command or "-o " in lowered or "--output" in lowered
+    ):
+        return True
+    return False
 
 
 def _is_code_file(path: Path) -> bool:
@@ -302,6 +362,11 @@ class WorkspaceWriteFileTool(BaseTool):
 
 class WorkspaceRunCommandTool(BaseTool):
     name = "workspace_run_command"
+    # A6 (minimal fix set): this is the only built-in tool that spawns an
+    # arbitrary shell, so it is the one that must be flagged for consent.
+    # The flag is still advisory — the backend does not gate execution on it
+    # yet; see BaseTool.requires_approval.
+    requires_approval = True
     description = (
         "Run a shell command inside the active workspace directory. "
         "Use this to run tests, install dependencies, build, or check lint. "
@@ -328,12 +393,11 @@ class WorkspaceRunCommandTool(BaseTool):
         if not ws:
             return ToolResult("No workspace is open. Use workspace_open first.", success=False)
 
-        # Basic safety filter
-        dangerous = ["rm -rf /", "rd /s /q ", "format ", "del /f /s /q ", ":(){"]
-        lowered = command.lower()
-        for d in dangerous:
-            if d in lowered:
-                return ToolResult(f"Blocked potentially dangerous command: {command}", success=False)
+        if _is_dangerous_command(command):
+            logger.warning("Blocked dangerous workspace command: %s", command)
+            return ToolResult(
+                f"Blocked potentially dangerous command: {command}", success=False
+            )
 
         try:
             proc = subprocess.run(

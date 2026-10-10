@@ -40,6 +40,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import database as db
 from app.config import settings
 from app.models import HealthResponse
+from app.security import LoopbackHostGuard, cors_kwargs
 from app.routes import chat as chat_router
 from app.routes import config as config_router
 from app.routes import costs as costs_router
@@ -150,12 +151,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# A6 (minimal fix set) — the backend is unauthenticated by design, so the
+# origin and Host checks below are what stop an arbitrary web page in the
+# user's browser from reading their history or driving tools. See
+# app/security.py for the threat model and the two kill-switch env vars.
+app.add_middleware(CORSMiddleware, **cors_kwargs())
+
+
+# Registered after CORS so it sits *outside* it (Starlette wraps middleware in
+# reverse registration order): a rebinding attempt is refused before any CORS
+# work happens. Pure ASGI, so SSE frames still stream through untouched.
+app.add_middleware(LoopbackHostGuard)
 
 if env_config.debug:
     app.add_middleware(debug_middleware)
