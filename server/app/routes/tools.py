@@ -2,11 +2,11 @@
 
 from pydantic import BaseModel
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from ..approval import broker as approval_broker
 from ..tools import registry
-from ..mcp_client import mcp_client
+from ..mcp_client import mcp_client, CONFIG_PATH
 from ..system_tools import SystemMonitorTool, ScreenshotTool
 from ..browser_tools import (
     BrowserOpenTool,
@@ -85,6 +85,70 @@ async def approve_tool_call(body: ApprovalDecision):
         "tool_call_id": body.tool_call_id,
         "approved": body.approved,
     }
+
+
+class MCPConfigPayload(BaseModel):
+    """整个 mcp_servers.json 的内容。
+
+    用宽松的 dict 接收：server 配置的字段会随 MCP 生态演进，在路由层写死
+    模型容易把合法配置挡掉。真正的字段收敛发生在
+    ``mcp_client._sanitize_server_config`` —— 未知键在那里被丢弃。
+    """
+
+    servers: dict[str, dict]
+
+
+@router.get("/mcp/config")
+async def get_mcp_config():
+    """返回 mcp_servers.json 的原始内容（含 command/args/url）。
+
+    注意路径：打包版读的是 exe 同级的那份，不是打进包的副本 —— 否则用户在
+    设置里改完，重启后又回到旧配置（和 .env 当初踩的是同一个坑）。
+    """
+    try:
+        return {
+            "path": CONFIG_PATH,
+            "config": mcp_client.read_raw_config(),
+        }
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.put("/mcp/config")
+async def put_mcp_config(body: MCPConfigPayload):
+    """保存 MCP 配置并立即重连。"""
+    try:
+        servers = await mcp_client.apply_config({"servers": body.servers})
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except OSError as e:
+        raise HTTPException(500, f"配置文件写入失败（目录不可写？）: {e}")
+    return {"status": "ok", "servers": servers}
+
+
+@router.delete("/mcp/servers/{name}")
+async def delete_mcp_server(name: str):
+    """删除一个 MCP 服务器配置并重载。"""
+    try:
+        config = mcp_client.read_raw_config()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    if name not in config.get("servers", {}):
+        raise HTTPException(404, f"MCP 服务器 '{name}' 不存在")
+
+    del config["servers"][name]
+    try:
+        servers = await mcp_client.apply_config(config)
+    except (ValueError, OSError) as e:
+        raise HTTPException(500, str(e))
+    return {"status": "ok", "servers": servers}
+
+
+@router.get("/mcp/tools")
+async def list_mcp_tools():
+    """列出当前已连接 MCP 服务器提供的全部工具。"""
+    return mcp_client.list_tools_info()
 
 
 @router.get("/mcp/servers")

@@ -516,3 +516,82 @@ export async function captureRegionScreenshot(
   }
   return resp.json();
 }
+
+// ====== MCP (Model Context Protocol) ======
+
+/** mcp_servers.json 里单个 server 的配置形状。 */
+export interface McpServerEntry {
+  transport?: string;
+  command?: string;
+  args?: string[];
+  url?: string;
+  env?: Record<string, string>;
+  enabled?: boolean;
+  description?: string;
+}
+
+/** 服务器运行状态（后端连接后才会有 tool_count > 0）。 */
+export interface McpServerStatus {
+  name: string;
+  enabled: boolean;
+  connected: boolean;
+  tool_count: number;
+  transport: string;
+}
+
+export interface McpTool {
+  server: string;
+  name: string;
+  description: string;
+}
+
+export async function getMcpConfig(): Promise<{
+  path: string;
+  config: { servers: Record<string, McpServerEntry> };
+}> {
+  return request("/api/tools/mcp/config");
+}
+
+/** 保存整份配置并让后端立即重连。 */
+export async function putMcpConfig(
+  servers: Record<string, McpServerEntry>
+): Promise<{ status: string; servers: McpServerStatus[] }> {
+  return request("/api/tools/mcp/config", {
+    method: "PUT",
+    body: JSON.stringify({ servers }),
+  });
+}
+
+export async function deleteMcpServer(
+  name: string
+): Promise<{ status: string; servers: McpServerStatus[] }> {
+  return request(`/api/tools/mcp/servers/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function listMcpServers(): Promise<McpServerStatus[]> {
+  return request<McpServerStatus[]>("/api/tools/mcp/servers");
+}
+
+export async function listMcpTools(): Promise<McpTool[]> {
+  return request<McpTool[]>("/api/tools/mcp/tools");
+}
+
+export async function reloadMcpServers(): Promise<{
+  status: string;
+  servers: McpServerStatus[];
+}> {
+  return request("/api/tools/mcp/reload", { method: "POST" });
+}
+
+/** 本地语音识别模型的状态（打包版模型没打进 exe 时这里会直接暴露出来）。 */
+export async function getSttStatus(): Promise<{
+  available: boolean;
+  vosk_model: string | null;
+  whisper_model: string | null;
+  search_roots: string[];
+  frozen: boolean;
+}> {
+  return request("/api/voice/stt-status");
+}

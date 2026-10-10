@@ -36,6 +36,34 @@ def _resolve_config_path() -> str:
 
 CONFIG_PATH = _resolve_config_path()
 
+# 只允许这些键进入配置文件：写配置是给设置面板用的，多余字段（尤其是未知的、
+# 将来可能被当成命令执行的键）一律丢弃，避免配置文件变成任意命令载体。
+_ALLOWED_CONFIG_KEYS = {"transport", "command", "args", "url", "env", "enabled", "description"}
+
+
+def _sanitize_server_config(raw: dict) -> dict:
+    """只保留已知字段，并把类型收敛到安全形状。"""
+    clean: dict[str, Any] = {}
+
+    transport = raw.get("transport", "stdio")
+    clean["transport"] = transport if transport in ("stdio", "sse") else "stdio"
+
+    for key in ("command", "url", "description"):
+        value = raw.get(key)
+        if isinstance(value, str) and value.strip():
+            clean[key] = value.strip()
+
+    args = raw.get("args")
+    if isinstance(args, list):
+        clean["args"] = [str(a) for a in args]
+
+    env = raw.get("env")
+    if isinstance(env, dict):
+        clean["env"] = {str(k): str(v) for k, v in env.items()}
+
+    clean["enabled"] = bool(raw.get("enabled", True))
+    return clean
+
 
 @dataclass
 class MCPServerConfig:
@@ -236,6 +264,64 @@ class MCPClient:
         self.load_config()
         await self.initialize()
 
+    def read_raw_config(self, path: str | None = None) -> dict:
+        """返回配置文件的原始内容（含未启用的 server）。
+
+        设置面板需要展示 command/args/url 这些细节，而 list_servers() 只给
+        连接状态，所以这里把文件原样读出来。文件不存在时给空骨架，让前端
+        仍能正常渲染"添加服务器"表单。
+
+        path 在调用时解析（而不是写进默认参数），测试才能指向临时文件。
+        """
+        path = path or CONFIG_PATH
+        if not os.path.exists(path):
+            return {"servers": {}}
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.error("Failed to read MCP config: %s", e)
+            raise ValueError(f"配置文件读取失败: {e}")
+
+        if not isinstance(data, dict) or not isinstance(data.get("servers", {}), dict):
+            raise ValueError("配置文件格式错误：需要 {'servers': {...}}")
+        return data
+
+    def write_raw_config(self, data: dict, path: str | None = None) -> None:
+        """校验并原子写回配置文件。
+
+        先写同目录临时文件再替换：直接 truncate 写的话，一旦中途抛异常
+        （序列化失败、磁盘写满）就会留下半个文件，用户再也启动不了 MCP。
+        """
+        path = path or CONFIG_PATH
+        servers = data.get("servers")
+        if not isinstance(servers, dict):
+            raise ValueError("配置格式错误：servers 必须是对象")
+
+        clean_servers: dict[str, dict] = {}
+        for name, raw in servers.items():
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError("服务器名称不能为空")
+            if not isinstance(raw, dict):
+                raise ValueError(f"服务器 '{name}' 的配置必须是对象")
+            clean_servers[name.strip()] = _sanitize_server_config(raw)
+
+        payload = {"servers": clean_servers}
+        directory = os.path.dirname(os.path.abspath(path)) or "."
+        os.makedirs(directory, exist_ok=True)
+
+        tmp_path = f"{path}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+        logger.info("MCP config written to %s (%d servers)", path, len(clean_servers))
+
+    async def apply_config(self, data: dict) -> list[dict[str, Any]]:
+        """写回配置并立刻重连，返回最新服务器状态。"""
+        self.write_raw_config(data)
+        await self._reload()
+        return self.list_servers()
+
     def list_servers(self) -> list[dict[str, Any]]:
         """Return status of all configured servers."""
         result = []
@@ -251,6 +337,17 @@ class MCPClient:
                 }
             )
         return result
+
+    def list_tools_info(self) -> list[dict[str, Any]]:
+        """列出所有已连接 MCP 服务器提供的工具（设置面板展示"装了什么"）。"""
+        return [
+            {
+                "server": tool.server_name,
+                "name": tool.name,
+                "description": tool.description,
+            }
+            for tool in self.list_tools()
+        ]
 
     def list_tools(self) -> list[MCPTool]:
         """Return all tools from connected servers."""
