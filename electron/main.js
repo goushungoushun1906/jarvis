@@ -70,13 +70,101 @@ function isBackendPortInUse() {
   });
 }
 
+/**
+ * 期望的后端构建标识，取自随包发布的 backend/BUILD_ID.txt。
+ *
+ * 只需维护 server/BUILD_ID.txt 一处：打包时它会被放到 exe 同级，Electron
+ * 直接读同一个文件，不会和后端代码写歪。读不到时返回 null，此时走保守
+ * 分支（不去动已经占用端口的进程）。
+ */
+function getExpectedBackendBuild() {
+  try {
+    const p = path.join(process.resourcesPath, 'backend', 'BUILD_ID.txt');
+    return require('fs').readFileSync(p, 'utf8').trim() || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * 探测已经在端口上跑着的后端。
+ *
+ * 必须把"可达但没有 build 标识"和"压根连不上"分开：前者正是旧版本后端
+ * （build 字段是本次才加的），恰好是最该被换掉的情况；后者通常是后端还在
+ * 启动中，这时贸然 kill 会误伤，只能保守复用。
+ */
+function probeRunningBackend() {
+  return new Promise((resolve) => {
+    const req = net.request(`http://127.0.0.1:${BACKEND_PORT}/health`);
+    let settled = false;
+    const done = (v) => { if (!settled) { settled = true; resolve(v); } };
+    req.on('response', (res) => {
+      let body = '';
+      res.on('data', (c) => { body += c.toString(); });
+      res.on('end', () => {
+        let build = null;
+        try { build = JSON.parse(body).build || null; } catch (_) { /* 非 JSON */ }
+        done({ reachable: true, build });
+      });
+    });
+    req.on('error', () => done({ reachable: false, build: null }));
+    req.end();
+    setTimeout(() => done({ reachable: false, build: null }), 3000);
+  });
+}
+
+/** 结束占用 18200 的进程。该端口是 JARVIS 专用，不属于它的进程不会监听它。 */
+function killProcessOnBackendPort() {
+  try {
+    const out = require('child_process')
+      .execSync(`netstat -ano | findstr :${BACKEND_PORT} | findstr LISTENING`, { encoding: 'utf8' });
+    const pids = [...new Set(
+      out.split('\n').map((l) => l.trim().split(/\s+/).pop()).filter((p) => /^\d+$/.test(p))
+    )];
+    for (const pid of pids) {
+      console.log(`Killing stale backend on port ${BACKEND_PORT} (pid=${pid})`);
+      require('child_process').execSync(`taskkill /PID ${pid} /F`, { stdio: 'ignore' });
+    }
+    return pids.length > 0;
+  } catch (_) {
+    return false;
+  }
+}
+
 function startBackend() {
   return new Promise(async (resolve, reject) => {
     const backendAlreadyRunning = await isBackendPortInUse();
     if (backendAlreadyRunning) {
-      console.log(`Backend port ${BACKEND_PORT} already in use; skipping Electron backend launch.`);
-      resolve();
-      return;
+      // 端口被占用不能直接跳过：那很可能是一个旧版本的残留后端（上一版没
+      // 退干净、或之前 dev 模式启动的 uvicorn）。以前这里只是打一行日志就
+      // 复用它，结果是用户明明换了新包、界面却照旧 —— 而且完全看不出来。
+      const expected = getExpectedBackendBuild();
+      const running = await probeRunningBackend();
+
+      // 可达但标识对不上（包括压根没有标识的旧版本）→ 换掉它。
+      // 连不上 → 多半还在启动中，别误杀，保守复用。
+      const mismatched = running.reachable && running.build !== expected;
+
+      if (expected && mismatched) {
+        console.log(
+          `Stale backend detected (running=${running.build || 'none'}, expected=${expected}); replacing it.`
+        );
+        if (killProcessOnBackendPort()) {
+          // 给内核一点时间真正释放端口，否则自己启动时又撞上 EADDRINUSE
+          await new Promise((r) => setTimeout(r, 1500));
+        } else {
+          console.warn('Could not kill stale backend; will reuse it.');
+          resolve();
+          return;
+        }
+      } else {
+        console.log(
+          `Backend port ${BACKEND_PORT} already in use` +
+          `${running.reachable ? ` by build ${running.build || 'none'}` : ' (not answering /health)'}; reusing it.`
+        );
+        resolve();
+        return;
+      }
     }
 
     const backendExe = getBackendPath();

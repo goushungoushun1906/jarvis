@@ -181,12 +181,32 @@ app.include_router(skills_router)
 app.include_router(debug_router)
 
 
+def build_id() -> str:
+    """当前这份代码的构建标识，用于识别"旧版本残留后端"。
+
+    写在 server/BUILD_ID.txt 里，Electron 直接读同一个文件比对，因此只需
+    维护一处。PyInstaller 会把该文件带到 exe 同级（见 backend.spec）。
+    读不到就返回 "unknown"，此时 Electron 保守地不去动已有后端。
+    """
+    try:
+        here = (
+            os.path.dirname(sys.executable)
+            if getattr(sys, "frozen", False)
+            else os.path.dirname(os.path.abspath(__file__))
+        )
+        with open(os.path.join(here, "BUILD_ID.txt"), encoding="utf-8") as f:
+            return f.read().strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health():
     return HealthResponse(
         status="ok",
         model=settings.llm_model,
         base_url=settings.llm_base_url,
+        build=build_id(),
     )
 
 
