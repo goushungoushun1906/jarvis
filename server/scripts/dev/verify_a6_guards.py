@@ -39,10 +39,10 @@ def _wait_ready(timeout: int = 90) -> bool:
     return False
 
 
-def start_backend(use_exe: bool):
+def start_backend(use_exe: bool, exe_dir: str = EXE_DIR):
     if use_exe:
-        cmd = [os.path.join(EXE_DIR, "backend.exe")]
-        cwd = EXE_DIR
+        cmd = [os.path.join(exe_dir, "backend.exe")]
+        cwd = exe_dir
     else:
         py = os.path.join(SERVER_DIR, ".venv", "Scripts", "python.exe")
         cmd = [py, "-m", "uvicorn", "main:app", "--host", "127.0.0.1",
@@ -126,9 +126,12 @@ def check_streaming() -> tuple[list[tuple[str, bool, str]], float, float]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--exe", action="store_true", help="用 packaged backend.exe 而非 venv")
+    ap.add_argument("--exe-dir", default=EXE_DIR,
+                    help="backend.exe 所在目录（默认 server/backend-dist；"
+                         "也可指向 release-*/win-unpacked/resources/backend）")
     args = ap.parse_args()
 
-    proc = start_backend(args.exe)
+    proc = start_backend(args.exe, args.exe_dir)
     try:
         if not _wait_ready(120):
             print("后端未就绪，中止", flush=True)
