@@ -413,6 +413,8 @@ class SystemMonitorTool(BaseTool):
 
 class SystemControlTool(BaseTool):
     name = "system_control"
+    # A6 — can launch apps, lock the screen, shut down / restart / sleep.
+    requires_approval = True
     description = (
         "Control basic system functions: adjust volume/mute, launch applications, "
         "lock screen, or shut down/restart/sleep. Windows platform features are used "

@@ -72,9 +72,13 @@ def _no_memory_extraction(monkeypatch):
 
 
 def _scripted_stream(events: list[AgentEvent], delay: float = 0.0):
-    """Build a fake agent_chat_stream returning the given events."""
+    """Build a fake agent_chat_stream returning the given events.
 
-    def _factory(messages):
+    Accepts ``**kwargs`` because the real route now passes ``approval_gate=``;
+    these doubles model the transport, not the gate, and ignore it.
+    """
+
+    def _factory(messages, **kwargs):
         async def _gen():
             if delay:
                 await asyncio.sleep(delay)

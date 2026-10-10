@@ -15,6 +15,7 @@ from .. import database as db
 from .. import memory as mem
 from .. import persona as persona_mod
 from ..agent import agent_chat, agent_chat_stream, strip_tool_call_json
+from ..approval import new_gate
 from ..config import settings
 from ..llm import LLMError, call_llm
 from ..models import (
@@ -371,8 +372,11 @@ async def api_chat(req: ChatRequest):
 
         messages = await _build_llm_messages(conversation_id, request_messages)
 
-        # Use agent loop (with tool support) for non-streaming
-        content, tool_log = await agent_chat(messages)
+        # Use agent loop (with tool support) for non-streaming.
+        # A6 — this endpoint cannot render an approval dialog (the response is
+        # not sent until the loop ends), so gated tools are refused outright
+        # rather than hanging until the approval timeout expires.
+        content, tool_log = await agent_chat(messages, new_gate(auto_deny=True))
 
         # Persist if conversation_id provided
         if conversation_id:
@@ -465,18 +469,38 @@ async def api_chat_stream(req: ChatRequest):
             tool_log.append(entry)
             return entry
 
-        agen = agent_chat_stream(messages)
+        # A6 — one gate per stream. Every tool marked requires_approval blocks
+        # here until POST /api/tools/approve resolves it (or it times out).
+        gate = new_gate()
+
+        agen = agent_chat_stream(messages, approval_gate=gate)
+        next_task: asyncio.Task | None = None
         try:
             while True:
-                try:
-                    ev = await asyncio.wait_for(
-                        agen.__anext__(), timeout=HEARTBEAT_INTERVAL_SECONDS
-                    )
-                except asyncio.TimeoutError:
+                # Drive the agent loop as a *task* and wait on it with a
+                # timeout instead of asyncio.wait_for(agen.__anext__(), ...).
+                #
+                # wait_for cancels the inner coroutine when the deadline hits,
+                # and cancelling __anext__ throws CancelledError *inside* the
+                # generator frame — which closes the whole agent loop. That
+                # was survivable while every round finished in a few seconds,
+                # but A6 lets a round legitimately block for minutes waiting on
+                # a human, and one heartbeat would have killed the stream.
+                # asyncio.wait() leaves the task running across timeouts.
+                if next_task is None:
+                    next_task = asyncio.ensure_future(agen.__anext__())
+                done, _pending = await asyncio.wait(
+                    {next_task}, timeout=HEARTBEAT_INTERVAL_SECONDS
+                )
+                if not done:
                     yield ": ping\n\n"
                     continue
+                try:
+                    ev = next_task.result()
                 except StopAsyncIteration:
                     break
+                finally:
+                    next_task = None
 
                 if ev.kind == "text":
                     full_content.append(ev.delta)
@@ -484,9 +508,14 @@ async def api_chat_stream(req: ChatRequest):
 
                 elif ev.kind == "tool_call":
                     tool = tool_registry.get(ev.name)
+                    # Prefer the loop's own judgement (it knows whether a gate
+                    # is attached); fall back to class metadata for streams
+                    # that run without a gate.
                     requires_approval = bool(
-                        getattr(tool, "requires_approval", False)
-                    )  # backend-side judgement, frontend is fallback only
+                        ev.requires_approval
+                        if ev.requires_approval is not None
+                        else getattr(tool, "requires_approval", False)
+                    )
                     _record_tool_log_entry(ev.call_id, ev.name, ev.args)
                     yield _sse(
                         "tool_call",
@@ -495,7 +524,11 @@ async def api_chat_stream(req: ChatRequest):
                                 "id": ev.call_id,
                                 "tool": ev.name,
                                 "args": ev.args,
-                                "status": "running",
+                                "status": (
+                                    "awaiting_approval"
+                                    if requires_approval
+                                    else "running"
+                                ),
                                 "requires_approval": requires_approval,
                             }
                         },
@@ -557,6 +590,9 @@ async def api_chat_stream(req: ChatRequest):
             yield "data: [DONE]\n\n"
             return
         finally:
+            if next_task is not None and not next_task.done():
+                next_task.cancel()
+            gate.close()
             try:
                 await agen.aclose()
             except (RuntimeError, asyncio.CancelledError):

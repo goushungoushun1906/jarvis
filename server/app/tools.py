@@ -38,11 +38,15 @@ class BaseTool(ABC):
     # the same round. When in doubt, leave this False.
     concurrency_safe: bool = False
 
-    # Phase 17.3 — backend-side approval judgement (single source of truth).
-    # The value is sent with every ``tool_call`` SSE event so the frontend no
-    # longer hardcodes its own risky-tool list. NOTE: this flag is *advisory*
-    # metadata only — execution is not gated on it yet. Enforcement
-    # (default-deny + explicit user consent) is deferred to A6.
+    # Phase 17.3 / A6 — backend-side approval judgement (single source of
+    # truth). Sent with every ``tool_call`` SSE event so the frontend no longer
+    # hardcodes its own risky-tool list.
+    #
+    # A6 made this *enforced*: when a stream carries an approval gate
+    # (see :mod:`app.approval`), a tool marked True does not execute until the
+    # user confirms via POST /api/tools/approve; denial or timeout yields a
+    # refusal ToolResult instead. Streams without a gate (evals, unit tests)
+    # keep the old advisory behaviour.
     requires_approval: bool = False
 
     @abstractmethod

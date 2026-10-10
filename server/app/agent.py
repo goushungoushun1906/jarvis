@@ -7,6 +7,10 @@ Phase 17.2 — two entry points:
   Text comes from :func:`app.llm.call_llm_stream`, so the first token reaches
   the caller at the model's own time-to-first-token. Read-only tools flagged
   ``concurrency_safe`` run in parallel within a round.
+
+  Pass ``approval_gate=`` to make ``requires_approval`` actually gate
+  execution (see :mod:`app.approval`). Without a gate the flag stays
+  advisory, which is what the evals and unit tests rely on.
 * :func:`agent_chat` — legacy blocking wrapper that drains the stream and
   returns ``(final_text, tool_log)``. Kept for existing callers (routes,
   evals); new code should consume the stream directly.
@@ -26,6 +30,7 @@ from typing import Literal
 from .llm import call_llm_stream, LLMError
 from .tools import BaseTool, registry, ToolResult
 from .plugins.registry import registry as plugin_registry
+from .approval import ApprovalGate, denied_result
 
 logger = logging.getLogger("jarvis")
 
@@ -65,6 +70,9 @@ class AgentEvent:
     content: str = ""
     message: str = ""
     tool_log: list[dict] = field(default_factory=list)
+    # A6 — True when execution of this call waits on a human decision.
+    # ``None`` means "not evaluated" (no gate attached to this stream).
+    requires_approval: bool | None = None
 
 
 # ------------------------------------------------------------------
@@ -72,8 +80,17 @@ class AgentEvent:
 # ------------------------------------------------------------------
 
 
-async def agent_chat_stream(messages: list[dict]) -> AsyncGenerator[AgentEvent, None]:
-    """Run the agent loop, yielding :class:`AgentEvent` in real time."""
+async def agent_chat_stream(
+    messages: list[dict],
+    approval_gate: "ApprovalGate | None" = None,
+) -> AsyncGenerator[AgentEvent, None]:
+    """Run the agent loop, yielding :class:`AgentEvent` in real time.
+
+    ``approval_gate`` is per-stream. When supplied, any tool whose
+    ``requires_approval`` is True does not execute until the gate returns
+    True; a denial produces a ``ToolResult`` telling the model it was refused
+    so the loop can continue and answer the user instead of dead-ending.
+    """
     # Build combined tool list: built-in registry + enabled plugins
     all_tools = registry.get_openai_tools() + plugin_registry.get_all_commands()
 
@@ -116,6 +133,9 @@ async def agent_chat_stream(messages: list[dict]) -> AsyncGenerator[AgentEvent, 
             return
 
         # ---- 2. Announce tool calls before executing ------------------
+        # Registration happens *before* the event is emitted: the frontend can
+        # only answer once it has seen the call_id, but registering first
+        # closes the window where a fast answer arrives at an unknown id.
         parsed: list[dict | None] = []
         for tc in tool_calls:
             try:
@@ -126,11 +146,19 @@ async def agent_chat_stream(messages: list[dict]) -> AsyncGenerator[AgentEvent, 
                 logger.warning("Tool call arguments not valid JSON: %s", exc)
                 args = None
             parsed.append(args)
+
+            call_id = tc.get("id", "")
+            name = tc["function"]["name"]
+            needs_approval = approval_gate is not None and _tool_needs_approval(name)
+            if needs_approval:
+                approval_gate.register(call_id, name, args or {})
+
             yield AgentEvent(
                 kind="tool_call",
-                call_id=tc.get("id", ""),
-                name=tc["function"]["name"],
+                call_id=call_id,
+                name=name,
                 args=args or {},
+                requires_approval=needs_approval or None,
             )
 
         msgs.append(
@@ -151,6 +179,12 @@ async def agent_chat_stream(messages: list[dict]) -> AsyncGenerator[AgentEvent, 
             start = time.perf_counter()
             if parsed[i] is None:
                 result = ToolResult(f"Invalid tool arguments for {name}", success=False)
+            elif approval_gate is not None and _tool_needs_approval(name):
+                # A6 — do not touch the tool until a human says yes.
+                if not await approval_gate.wait(tc.get("id", "")):
+                    result = denied_result(name, approval_gate.last_reason)
+                else:
+                    result = await _execute_tool_call(name, parsed[i])
             else:
                 result = await _execute_tool_call(name, parsed[i])
             results[i] = result
@@ -230,6 +264,18 @@ def _tool_is_safe(name: str) -> bool:
     return bool(tool is not None and getattr(tool, "concurrency_safe", False))
 
 
+def _tool_needs_approval(name: str) -> bool:
+    """Return True if executing ``name`` requires an explicit human OK.
+
+    Read off the tool class (single source of truth, same place the frontend
+    fallback list was derived from). Plugin commands have no such metadata and
+    are therefore ungated — a known gap; they are user-installed and not
+    shipped with the app.
+    """
+    tool: BaseTool | None = registry.get(name)
+    return bool(tool is not None and getattr(tool, "requires_approval", False))
+
+
 def _tool_result_event(tc: dict, result: ToolResult, duration_ms: int) -> AgentEvent:
     return AgentEvent(
         kind="tool_result",
@@ -266,18 +312,26 @@ async def _execute_tool_call(tool_name: str, tool_args: dict) -> ToolResult:
 # ------------------------------------------------------------------
 
 
-async def agent_chat(messages: list[dict]) -> tuple[str, list[dict]]:
+async def agent_chat(
+    messages: list[dict],
+    approval_gate: "ApprovalGate | None" = None,
+) -> tuple[str, list[dict]]:
     """Run an agent chat loop with tool support (blocking variant).
 
     Drains :func:`agent_chat_stream` and returns
     ``(final_response_text, tool_calls_log)``. Kept for existing callers;
     LLM failures are returned as an error *string* to match the historical
     contract rather than raising.
+
+    A blocking call cannot show an approval dialog — the HTTP response is not
+    sent until the loop finishes — so callers that may hit a gated tool should
+    pass ``ApprovalGate(auto_deny=True)``. Without a gate the flag is advisory
+    (evals rely on this).
     """
     final_text = ""
     tool_log: list[dict] = []
 
-    async for event in agent_chat_stream(messages):
+    async for event in agent_chat_stream(messages, approval_gate=approval_gate):
         if event.kind == "done":
             final_text, tool_log = event.content, event.tool_log
         elif event.kind == "error":

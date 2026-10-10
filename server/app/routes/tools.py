@@ -1,7 +1,10 @@
 """Tools management API."""
 
+from pydantic import BaseModel
+
 from fastapi import APIRouter
 
+from ..approval import broker as approval_broker
 from ..tools import registry
 from ..mcp_client import mcp_client
 from ..system_tools import SystemMonitorTool, ScreenshotTool
@@ -50,6 +53,38 @@ async def list_tools():
         }
         for t in registry.list_tools()
     ]
+
+
+class ApprovalDecision(BaseModel):
+    tool_call_id: str
+    approved: bool
+
+
+@router.post("/approve")
+async def approve_tool_call(body: ApprovalDecision):
+    """Hand a user's approval decision back to a live chat stream.
+
+    The frontend has been POSTing here since Phase 17.3; the endpoint did not
+    exist, so the 404 was swallowed and every "rejected" call ran anyway. The
+    chat stream registers each pending call with the process-wide broker under
+    its ``call_id``, so this request can resume a stream owned by a different
+    task.
+
+    Returns ``ok: false`` when the id is unknown — the call already completed,
+    timed out, or belongs to a stream that has ended.
+    """
+    resolved = approval_broker.resolve(body.tool_call_id, body.approved)
+    if not resolved:
+        return {
+            "ok": False,
+            "reason": "unknown_or_expired_call_id",
+            "tool_call_id": body.tool_call_id,
+        }
+    return {
+        "ok": True,
+        "tool_call_id": body.tool_call_id,
+        "approved": body.approved,
+    }
 
 
 @router.get("/mcp/servers")

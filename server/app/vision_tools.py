@@ -192,6 +192,8 @@ class VisionDescribeTool(BaseTool):
 
 class VisionAgentTool(BaseTool):
     name = "vision_agent"
+    # A6 — takes over mouse and keyboard on the user's real desktop.
+    requires_approval = True
     description = (
         "Automate tasks by looking at the screen and interacting with it. "
         "Given a goal (e.g. 'open Notepad and type hello', 'click the Submit button'), "

@@ -322,6 +322,8 @@ class WorkspaceReadFileTool(BaseTool):
 
 class WorkspaceWriteFileTool(BaseTool):
     name = "workspace_write_file"
+    # A6 — irreversible: overwrites whatever was in the file before.
+    requires_approval = True
     description = (
         "Write or overwrite a file relative to the active workspace root. "
         "Use this to edit code, create new files, or apply patches."
@@ -362,10 +364,9 @@ class WorkspaceWriteFileTool(BaseTool):
 
 class WorkspaceRunCommandTool(BaseTool):
     name = "workspace_run_command"
-    # A6 (minimal fix set): this is the only built-in tool that spawns an
-    # arbitrary shell, so it is the one that must be flagged for consent.
-    # The flag is still advisory — the backend does not gate execution on it
-    # yet; see BaseTool.requires_approval.
+    # A6 — the only built-in tool that spawns an arbitrary shell. The flag is
+    # enforced: with an approval gate attached the call blocks until the user
+    # confirms, and a denial/timeout never reaches subprocess.
     requires_approval = True
     description = (
         "Run a shell command inside the active workspace directory. "

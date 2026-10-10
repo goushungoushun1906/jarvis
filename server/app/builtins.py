@@ -204,6 +204,8 @@ class WebSearchTool(BaseTool):
 
 class CodeExecutionTool(BaseTool):
     name = "code_execution"
+    # A6 — arbitrary Python in-process: filesystem + network reachable.
+    requires_approval = True
     description = (
         "Execute Python code in a sandboxed environment. "
         "Use this for calculations, data processing, file I/O, or any task requiring code. "
