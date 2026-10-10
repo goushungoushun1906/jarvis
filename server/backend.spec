@@ -12,6 +12,22 @@
 
 from PyInstaller.utils.hooks import collect_submodules
 
+# vosk 的原生库是运行时拼路径加载的，静态扫描扫不到，必须显式收集：
+#   vosk/__init__.py: _ffi.dlopen(os.path.join(os.path.dirname(__file__), "libvosk.dll"))
+# frozen 下 __file__ 指向 _MEIPASS/vosk/__init__.py，所以 DLL 也必须落在
+# _MEIPASS/vosk/ 下。漏掉它的表现极具误导性 —— STT 不报错，只是"识别返回空"
+# （异常被 stt.py 吞掉后回落到网络 Whisper），日志里只有一句 WinError 2。
+import os as _os
+
+import vosk as _vosk
+
+_vosk_dir = _os.path.dirname(_vosk.__file__)
+vosk_binaries = [
+    (_os.path.join(_vosk_dir, _f), "vosk")
+    for _f in sorted(_os.listdir(_vosk_dir))
+    if _f.lower().endswith((".dll", ".so", ".dylib"))
+]
+
 # --- 项目自身模块：自动全量收集 ---
 app_modules = collect_submodules('app')
 
@@ -91,13 +107,19 @@ extra_hiddenimports = [
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    binaries=vosk_binaries,
     datas=[
         ('.env', '.'),
         # 插件是运行时按目录扫描动态加载的（plugins/manager.scan_and_load），
         # 不打包进去的话打包版会一个插件都加载不到。
         ('plugins', 'plugins'),
         ('mcp_servers.json', '.'),
+        # 离线语音识别模型。不打进来的话打包版 STT 找不到模型，会静默回落
+        # 到网络 Whisper —— 表现就是"说话后干等十几秒然后返回空"。
+        # 只打 small（66MB）：大模型 2GB 会让 exe 体积和启动解压时间都失控。
+        # 需要更高准确率时，把 vosk-model-cn-0.22 放到 exe 同级 models/vosk/
+        # 即可覆盖（stt.py 的搜索优先级：外部目录 > 包内）。
+        ('models/vosk/vosk-model-small-cn-0.22', 'models/vosk/vosk-model-small-cn-0.22'),
     ],
     hiddenimports=app_modules + chromadb_modules + extra_hiddenimports,
     hookspath=[],

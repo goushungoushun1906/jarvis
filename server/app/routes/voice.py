@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import os
 import threading
 import time
 import wave
@@ -106,6 +107,22 @@ async def text_to_speech_file(req: TTSRequest):
 # Speech-to-Text
 # ------------------------------------------------------------------
 
+@router.get("/stt-status")
+async def stt_status():
+    """报告本地 STT 模型的实际位置与可用性。
+
+    打包版最常见的故障是 models/ 没打进 exe，表现却是"识别一直返回空"，
+    看不出根因。这个端点把模型路径、搜索过的目录、是否 frozen 全部暴露，
+    排障时一眼就能判断模型有没有被打包进去。
+    """
+    try:
+        from ..stt import model_status
+        return model_status()
+    except Exception as e:
+        logger.exception("STT status failed")
+        raise HTTPException(500, f"STT status failed: {str(e)}")
+
+
 @router.post("/stt")
 async def speech_to_text(audio: UploadFile = File(...)):
     """Transcribe audio to text.
@@ -138,9 +155,18 @@ async def speech_to_text(audio: UploadFile = File(...)):
         except Exception as e:
             logger.warning("Vosk STT failed: %s", e)
 
+        # 本地模型可用时上面已经返回；能走到这里说明本地不可用。
+        # 离线部署（打包版）下继续联网只会让用户每次说话都干等十几秒，
+        # 因此允许用 JARVIS_STT_OFFLINE_ONLY 直接关掉网络回退。
+        if os.environ.get("JARVIS_STT_OFFLINE_ONLY") == "1":
+            logger.warning("STT: 本地模型不可用且已开启离线模式，跳过网络回退")
+            return _stt_unavailable_response()
+
         # --- Strategy 2: HuggingFace free Whisper ---
+        # 超时刻意压到 8s：语音链路的体验预算是 3s，这里已经是"本地模型缺失"
+        # 的降级路径，再让用户等满 60s 只会让界面看起来卡死。
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 resp = await client.post(
                     "https://api-inference.huggingface.co/models/openai/whisper-tiny",
                     headers={"Content-Type": content_type},
