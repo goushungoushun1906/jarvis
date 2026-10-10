@@ -23,6 +23,7 @@ release/
 release-new/
 release-b*/
 release-old-*/
+release-*/
 **/*.exe
 
 # === 虚拟环境 ===
