@@ -85,6 +85,10 @@ class HealthResponse(BaseModel):
     status: str
     model: str
     base_url: str
+    # 构建标识。Electron 启动时用它判断"已经在 18200 上跑着的后端是不是
+    # 当前这份代码"——不匹配就说明是旧版本的残留进程，必须换掉，否则
+    # 用户换了新包却仍在跟旧后端对话，界面上完全看不出来。
+    build: str = "unknown"
 
 
 # --- Model Profiles ---

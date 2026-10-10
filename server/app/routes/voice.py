@@ -11,6 +11,7 @@ import time
 import wave
 
 import httpx
+import numpy as np
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
@@ -51,6 +52,30 @@ def _get_pyaudio():
             "server\\.venv\\Scripts\\python.exe -m pip install pyaudio==0.2.14"
         ) from exc
     return pyaudio
+
+
+# 安静环境的本底 RMS 通常在 0.001 以下，正常说话在 0.02~0.1 之间。
+# 取 0.004 作为"确实收到了声音"的门槛：低于它基本可以断定麦克风被系统
+# 禁用、选错了设备，或者用户根本没出声。
+_SILENCE_RMS = 0.004
+
+
+def _rms_of_raw_pcm(raw: bytes) -> float:
+    """算出 16-bit PCM 的平均音量（RMS）。"""
+    if not raw:
+        return 0.0
+    samples = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+    if samples.size == 0:
+        return 0.0
+    return float(np.sqrt(np.mean(samples * samples)))
+
+
+def _level_payload(rms: float) -> dict:
+    """把 RMS 换算成前端能直接展示的百分比。0.1 记为 100%。"""
+    return {
+        "level": round(rms, 5),
+        "level_pct": min(100, round(rms / 0.1 * 100)),
+    }
 
 
 class TTSRequest(BaseModel):
@@ -293,7 +318,10 @@ async def stop_recording_and_transcribe():
     logger.info("Recording stopped: %.1fs, %d frames", duration, len(frames))
 
     if len(frames) < 2:
-        return {"text": "", "info": "录音太短"}
+        return {"text": "", "duration": round(duration, 1), "error": "录音太短，请按住说完再松开"}
+
+    raw = b"".join(frames)
+    rms = _rms_of_raw_pcm(raw)
 
     # Encode as WAV in memory
     buf = io.BytesIO()
@@ -301,21 +329,123 @@ async def stop_recording_and_transcribe():
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(16000)
-        for f in frames:
-            wf.writeframes(f)
+        wf.writeframes(raw)
     wav_bytes = buf.getvalue()
 
     logger.info(
-        "Server recording: %.1fs, %d frames, %d bytes",
-        duration, len(frames), len(wav_bytes),
+        "Server recording: %.1fs, %d frames, %d bytes, rms=%.5f",
+        duration, len(frames), len(wav_bytes), rms,
     )
+
+    # 静音就直接告诉用户，不要浪费时间跑识别。
+    # 麦克风被 Windows 隐私设置挡掉时 pyaudio 仍能"正常"返回全零数据，
+    # 不检测音量的话用户只会看到"说了话但什么都没发生"。
+    if rms < _SILENCE_RMS:
+        logger.warning("Recording is silent (rms=%.5f) — mic may be muted", rms)
+        return {
+            "text": "",
+            "duration": round(duration, 1),
+            "error": "麦克风没有收到声音，请检查系统麦克风权限或默认输入设备",
+            **_level_payload(rms),
+        }
 
     # Transcribe using STT module
     try:
         from ..stt import transcribe_wav
         text = await asyncio.to_thread(transcribe_wav, wav_bytes)
         logger.info("Server recording STT result: '%s'", text[:80])
-        return {"text": text, "duration": round(duration, 1)}
+        if text.strip():
+            return {"text": text, "duration": round(duration, 1), **_level_payload(rms)}
+        # 有声音但没识别出内容：和"没收到声音"是两种不同的故障，必须分开说，
+        # 否则用户无法判断该去查权限还是该重说一遍。
+        return {
+            "text": "",
+            "duration": round(duration, 1),
+            "error": "听到了声音但没听清，请靠近麦克风、稍微说慢一点",
+            **_level_payload(rms),
+        }
     except Exception as e:
         logger.error("Server recording STT error: %s", e)
         raise HTTPException(500, f"STT failed: {str(e)}")
+
+
+def _record_blocking(seconds: float) -> tuple[bytes, dict | None]:
+    """同步录一小段，返回 (原始 PCM, 默认输入设备信息)。
+
+    pyaudio 的 read() 是阻塞的，必须在线程里跑，不能放进事件循环。
+    """
+    import pyaudio as pa
+
+    p = pa.PyAudio()
+    try:
+        try:
+            dev = p.get_default_input_device_info()
+            device = {
+                "name": dev.get("name"),
+                "sample_rate": dev.get("defaultSampleRate"),
+            }
+        except Exception:
+            device = None
+
+        stream = p.open(
+            format=pa.paInt16, channels=1, rate=16000,
+            input=True, frames_per_buffer=1024,
+        )
+        try:
+            frames = []
+            for _ in range(int(16000 / 1024 * seconds)):
+                frames.append(stream.read(1024, exception_on_overflow=False))
+        finally:
+            try:
+                stream.stop_stream()
+                stream.close()
+            except Exception:
+                pass
+        return b"".join(frames), device
+    finally:
+        try:
+            p.terminate()
+        except Exception:
+            pass
+
+
+@router.post("/mic-check")
+async def mic_check(seconds: float = 2.0):
+    """录一小段并返回实测音量，用于确认系统是否真的允许访问麦克风。
+
+    "说了话没反应"最常见的三类原因在用户侧完全无法区分：麦克风被系统
+    隐私设置挡掉、默认输入设备选错、本地模型没打包。这个端点直接把
+    音量、设备名、模型状态一起返回，让用户在界面上就能定位是哪一类。
+    """
+    if _recording_state["active"]:
+        raise HTTPException(409, "正在录音中，请先停止")
+
+    seconds = max(0.5, min(seconds, 5.0))
+
+    try:
+        _get_pyaudio()
+        raw, device = await asyncio.to_thread(_record_blocking, seconds)
+    except RuntimeError as e:
+        # pyaudio 没装：这类问题用户自己改不了，直接把安装提示透传出去
+        raise HTTPException(500, str(e))
+    except Exception as e:
+        logger.exception("Mic check failed")
+        raise HTTPException(500, f"麦克风检测失败：{e}")
+
+    rms = _rms_of_raw_pcm(raw)
+    try:
+        from ..stt import model_status
+        status = model_status()
+        model_ready = bool(status.get("available"))
+    except Exception:
+        model_ready = False
+
+    logger.info("Mic check: %.1fs, %d bytes, rms=%.5f", seconds, len(raw), rms)
+    return {
+        "duration": round(seconds, 1),
+        "bytes": len(raw),
+        "device": device,
+        "heard_sound": rms >= _SILENCE_RMS,
+        "model_ready": model_ready,
+        **_level_payload(rms),
+    }

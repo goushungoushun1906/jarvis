@@ -303,3 +303,4 @@
 .cost-table-mono {
   font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
 }
+.voice-dropdown-check-btn{width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(128,128,128,.35);background:rgba(128,128,128,.12);color:inherit;font-size:12px;cursor:pointer}.voice-dropdown-check-btn:disabled{opacity:.5;cursor:default}.voice-check-result{margin-top:8px;font-size:11px;line-height:1.7}.voice-check-row{display:flex;justify-content:space-between;gap:10px}.voice-check-row b{font-weight:600}.voice-check-row b.ok{color:#2f9e63}.voice-check-row b.bad{color:#d1495b}.voice-check-meter{margin-top:6px;height:4px;border-radius:2px;background:rgba(128,128,128,.25);overflow:hidden}.voice-check-meter i{display:block;height:100%;background:linear-gradient(90deg,#2f9e63,#00a8c8)}.voice-check-hint{margin-top:6px;opacity:.75;font-size:10px;line-height:1.5}

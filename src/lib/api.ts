@@ -366,10 +366,39 @@ export async function serverRecordStart(): Promise<void> {
   if (!resp.ok) throw new Error("Failed to start server recording");
 }
 
-export async function serverRecordStop(): Promise<{ text: string; duration: number }> {
+/** 服务器录音的识别结果。
+ *
+ * 后端现在会区分三种失败：录音太短、麦克风没声音、有声音但没听清。
+ * 以前只返回 text，前端拿空字符串就当"什么都没发生"，用户完全看不出
+ * 是权限问题还是没听清，所以这里把 error/level 一并带回来。
+ */
+export interface ServerRecordResult {
+  text: string;
+  duration: number;
+  error?: string;
+  level?: number;
+  level_pct?: number;
+}
+
+export async function serverRecordStop(): Promise<ServerRecordResult> {
   const resp = await fetch(`${API_BASE}/api/voice/record/stop`, { method: "POST" });
   if (!resp.ok) throw new Error("Failed to stop server recording");
   return resp.json();
+}
+
+export interface MicCheckResult {
+  duration: number;
+  bytes: number;
+  device: { name?: string; sample_rate?: number } | null;
+  heard_sound: boolean;
+  model_ready: boolean;
+  level: number;
+  level_pct: number;
+}
+
+/** 录一小段并回报音量，用来判断系统到底有没有放行麦克风。 */
+export async function micCheck(seconds = 2): Promise<MicCheckResult> {
+  return request(`/api/voice/mic-check?seconds=${seconds}`, { method: "POST" });
 }
 
 // ====== File/Image Upload ======

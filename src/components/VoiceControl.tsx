@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { VoiceInfo, VoiceMode } from "../lib/types";
-import { getVoices, serverRecordStart, serverRecordStop } from "../lib/api";
+import {
+  getVoices,
+  serverRecordStart,
+  serverRecordStop,
+  micCheck,
+  type MicCheckResult,
+} from "../lib/api";
 
 interface VoiceControlProps {
   voiceMode: VoiceMode;
@@ -34,6 +40,9 @@ export default function VoiceControl({
   const [sttError, setSttError] = useState<string | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [micChecking, setMicChecking] = useState(false);
+  const [micResult, setMicResult] = useState<MicCheckResult | null>(null);
+  const [micCheckError, setMicCheckError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Load voices list
@@ -82,6 +91,12 @@ export default function VoiceControl({
         const result = await serverRecordStop();
         if (result.text?.trim()) {
           onTranscript(result.text.trim());
+        } else if (result.error) {
+          // 后端已经区分了"麦克风没声音"和"有声音但没听清"，直接转述；
+          // 以前这里静默吞掉，用户只能看到"点了一下没反应"
+          setSttError(result.error);
+        } else {
+          setSttError("没听清，请再说一次");
         }
       } catch {
         setSttError("语音识别失败");
@@ -105,6 +120,20 @@ export default function VoiceControl({
     const next = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length];
     onVoiceModeChange(next);
   }, [voiceMode, onVoiceModeChange]);
+
+  // "说了话没反应"在用户侧有三种分不清的原因：系统没放行麦克风、默认
+  // 输入设备选错、模型没打进包。自检把这三样一次测出来，省得靠猜。
+  const handleMicCheck = useCallback(async () => {
+    setMicChecking(true);
+    setMicResult(null);
+    try {
+      setMicResult(await micCheck(2));
+    } catch (e) {
+      setMicCheckError(e instanceof Error ? e.message : "检测失败");
+    } finally {
+      setMicChecking(false);
+    }
+  }, []);
 
   const micTitle = isRecording
     ? "点击停止录音"
@@ -226,7 +255,7 @@ export default function VoiceControl({
               </select>
             </div>
 
-            {/* Voice mode selector */}
+            {/* 朗读模式选择器 */}
             <div className="voice-dropdown-field">
               <label className="voice-dropdown-label">朗读模式</label>
               <div className="voice-mode-options">
@@ -243,6 +272,51 @@ export default function VoiceControl({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* 麦克风自检 */}
+            <div className="voice-dropdown-field">
+              <label className="voice-dropdown-label">麦克风自检</label>
+              <button
+                className="voice-dropdown-check-btn"
+                onClick={handleMicCheck}
+                disabled={micChecking || isRecording}
+              >
+                {micChecking ? "正在检测（请说话）..." : "检测麦克风"}
+              </button>
+
+              {micCheckError && (
+                <div className="voice-check-result bad">{micCheckError}</div>
+              )}
+
+              {micResult && (
+                <div className="voice-check-result">
+                  <div className="voice-check-row">
+                    <span>输入设备</span>
+                    <b>{micResult.device?.name ?? "未知"}</b>
+                  </div>
+                  <div className="voice-check-row">
+                    <span>收到声音</span>
+                    <b className={micResult.heard_sound ? "ok" : "bad"}>
+                      {micResult.heard_sound ? "是" : "否（全静音）"}
+                    </b>
+                  </div>
+                  <div className="voice-check-row">
+                    <span>识别模型</span>
+                    <b className={micResult.model_ready ? "ok" : "bad"}>
+                      {micResult.model_ready ? "已就绪" : "缺失"}
+                    </b>
+                  </div>
+                  <div className="voice-check-meter">
+                    <i style={{ width: `${Math.max(2, micResult.level_pct)}%` }} />
+                  </div>
+                  <div className="voice-check-hint">
+                    {micResult.heard_sound
+                      ? "麦克风正常，可直接语音输入"
+                      : "系统可能未允许桌面应用访问麦克风，或默认输入设备不是你的麦克风"}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
