@@ -316,6 +316,24 @@ class PluginRegistry:
                 f"Plugin error: {str(e)}", success=False
             )
 
+    def command_requires_approval(self, command_name: str) -> bool:
+        """Return True if a plugin command must be confirmed before running.
+
+        Returns False for unknown commands, so a typo'd name cannot
+        accidentally sail through — the caller still fails later on
+        "unknown tool", which is the honest outcome.
+        """
+        plugin_name = self.find_command_plugin(command_name)
+        if plugin_name is None:
+            return False
+        instance = self._plugin_instances.get(plugin_name)
+        if instance is None:
+            return False
+        for cmd in instance.get_commands():
+            if cmd.name == command_name:
+                return bool(cmd.requires_approval)
+        return False
+
     def find_command_plugin(self, command_name: str) -> str | None:
         """Find which plugin owns a command. Returns plugin name or None."""
         entry = self._command_map.get(command_name)

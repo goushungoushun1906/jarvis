@@ -267,13 +267,15 @@ def _tool_is_safe(name: str) -> bool:
 def _tool_needs_approval(name: str) -> bool:
     """Return True if executing ``name`` requires an explicit human OK.
 
-    Read off the tool class (single source of truth, same place the frontend
-    fallback list was derived from). Plugin commands have no such metadata and
-    are therefore ungated — a known gap; they are user-installed and not
-    shipped with the app.
+    Built-in tools carry the flag on their class; plugin commands carry it in
+    their manifest (``requires_approval``) and it is read back through the
+    plugin registry. Both paths are consulted so a plugin cannot slip past the
+    gate just by living outside the built-in registry.
     """
     tool: BaseTool | None = registry.get(name)
-    return bool(tool is not None and getattr(tool, "requires_approval", False))
+    if tool is not None:
+        return bool(getattr(tool, "requires_approval", False))
+    return plugin_registry.command_requires_approval(name)
 
 
 def _tool_result_event(tc: dict, result: ToolResult, duration_ms: int) -> AgentEvent:

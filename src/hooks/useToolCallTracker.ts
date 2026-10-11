@@ -11,11 +11,15 @@ import type { ToolCallRecord } from "../lib/types";
  * "press_key"，从来没匹配上过任何东西。
  */
 const HIGH_RISK_TOOLS = new Set([
+  // 内置工具（与 app/tools.py 的 requires_approval 对应）
   "workspace_run_command",
   "workspace_write_file",
   "system_control",
   "code_execution",
   "vision_agent",
+  // 插件命令（与 plugins/*/plugin.json 的 requires_approval 对应）
+  "clear_history",
+  "delete_reminder",
 ]);
 
 export function requiresApproval(toolName: string): boolean {

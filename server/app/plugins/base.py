@@ -57,6 +57,11 @@ class PluginCommand:
     description: str
     parameters: dict[str, Any]  # JSON Schema for the parameters
     handler_name: str = ""  # method name on the plugin class; defaults to name
+    # A6 — set True for commands that are irreversible or have effects outside
+    # JARVIS (deleting data, writing to the system clipboard, sending mail).
+    # With an approval gate attached the call blocks until the user confirms;
+    # without one the flag stays advisory, exactly like BaseTool.
+    requires_approval: bool = False
 
     def __post_init__(self):
         if not self.handler_name:
@@ -164,6 +169,7 @@ class BasePlugin(ABC):
                     description=item.get("description", ""),
                     parameters=params_schema,
                     handler_name=item.get("handler_name", item["name"]),
+                    requires_approval=bool(item.get("requires_approval", False)),
                 )
             )
         return result
@@ -233,6 +239,9 @@ class BasePlugin(ABC):
             "description": self.description,
             "author": self.author,
             "commands": [c.name for c in self.get_commands()],
+            "gated_commands": [
+                c.name for c in self.get_commands() if c.requires_approval
+            ],
             "config_schema": [
                 {"key": f.key, "type": f.type, "default": f.default}
                 for f in self.get_config_schema()

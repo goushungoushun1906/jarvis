@@ -53,6 +53,7 @@
       "name": "clear_history",
       "description": "Clear all clipboard history entries.",
       "handler_name": "clear_history",
+      "requires_approval": true,
       "parameters": {
         "type": "object",
         "properties": {},

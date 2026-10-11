@@ -76,6 +76,7 @@
       "name": "delete_reminder",
       "description": "Delete a reminder by its ID.",
       "handler_name": "delete_reminder",
+      "requires_approval": true,
       "parameters": {
         "type": "object",
         "properties": {
