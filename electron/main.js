@@ -639,6 +639,16 @@ ipcMain.handle('capture-region', async () => {
 });
 
 ipcMain.on('region-selected', (_event, region) => {
+  // 坐标最终会交给截图逻辑，非数字会让后续运算变成 NaN 并静默产出坏图
+  if (
+    !region ||
+    typeof region !== 'object' ||
+    !['x', 'y', 'width', 'height'].every((k) => Number.isFinite(region[k]))
+  ) {
+    return;
+  }
+  if (region.width <= 0 || region.height <= 0) return;
+
   if (regionSelectorResolve) {
     regionSelectorResolve(region);
     regionSelectorResolve = null;
@@ -651,7 +661,11 @@ ipcMain.on('region-selected', (_event, region) => {
 
 // ====== Floating window IPC ======
 ipcMain.on('floating-query', (_event, query) => {
-  if (!query || !query.trim()) return;
+  // 渲染进程是不可信调用方：解构/调用前必须先确认类型。以前直接
+  // `query.trim()`，传个对象进来就会抛 TypeError 让主进程挂掉。
+  if (typeof query !== 'string') return;
+  const text = query.trim().slice(0, 4000);
+  if (!text) return;
 
   hideFloatingWindow();
 
@@ -667,7 +681,7 @@ ipcMain.on('floating-query', (_event, query) => {
   // Forward the query to the renderer after a short delay to ensure window is ready
   setTimeout(() => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('floating-query', query.trim());
+      mainWindow.webContents.send('floating-query', text);
     }
   }, 300);
 });
@@ -677,8 +691,16 @@ ipcMain.on('floating-hide', () => {
 });
 
 // ====== Selection assistant IPC ======
-ipcMain.on('selection-action', (_event, { text, action }) => {
-  if (!text || !action) return;
+// 白名单之外的一律拒绝：默认分支会把 action 原样拼进提示词，等于让渲染进程
+// 决定发给模型的指令前缀是什么。
+const SELECTION_ACTIONS = ['explain', 'translate', 'summarize', 'rewrite'];
+
+ipcMain.on('selection-action', (_event, payload) => {
+  if (!payload || typeof payload !== 'object') return;
+  const { text, action } = payload;
+  if (typeof text !== 'string' || typeof action !== 'string') return;
+  if (!SELECTION_ACTIONS.includes(action)) return;
+  if (!text.trim() || text.length > 4000) return;
 
   hideSelectionWindow();
 
@@ -689,7 +711,7 @@ ipcMain.on('selection-action', (_event, { text, action }) => {
     summarize: `请总结以下内容的要点：\n\n${text}`,
     rewrite: `请改写以下内容，保持原意但让表达更流畅自然：\n\n${text}`,
   };
-  const prompt = prompts[action] || `${action}: ${text}`;
+  const prompt = prompts[action];
 
   // Show and focus main window
   if (!mainWindow || mainWindow.isDestroyed()) {

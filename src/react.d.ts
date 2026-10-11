@@ -59,7 +59,8 @@ interface Window {
     captureRegion?: () => Promise<{ left: number; top: number; width: number; height: number } | null>;
     submitFloatingQuery?: (query: string) => void;
     hideFloatingWindow?: () => void;
-    onFloatingFocus?: (callback: () => void) => void;
+    // 订阅类 API 一律返回取消函数，供 useEffect 直接当 cleanup 用
+    onFloatingFocus?: (callback: () => void) => () => void;
     onFloatingQuery?: (callback: (query: string) => void) => () => void;
     submitSelectionAction?: (payload: { text: string; action: string }) => void;
     hideSelectionWindow?: () => void;
