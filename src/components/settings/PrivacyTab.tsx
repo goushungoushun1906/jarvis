@@ -5,7 +5,11 @@ import type { SecretsStatus } from "../../lib/api";
 interface PrivacyStats {
   conversation_count: number;
   message_count: number;
-  db_size_mb: number;
+  plugin_count?: number;
+  /** 旧版后端用 MB；新版用 bytes + human 可读字符串。 */
+  db_size_mb?: number;
+  database_size_bytes?: number;
+  database_size_human?: string;
 }
 
 const API_BASE = "http://127.0.0.1:18200";
@@ -185,9 +189,22 @@ export default function PrivacyTab({ active }: { active: boolean }) {
               <span className="label">消息总数</span>
               <span className="value">{stats.message_count}</span>
             </div>
+            {typeof stats.plugin_count === "number" && (
+              <div className="about-row">
+                <span className="label">插件配置数</span>
+                <span className="value">{stats.plugin_count}</span>
+              </div>
+            )}
             <div className="about-row">
               <span className="label">数据库大小</span>
-              <span className="value">{stats.db_size_mb.toFixed(2)} MB</span>
+              <span className="value">
+                {stats.database_size_human ??
+                  (typeof stats.db_size_mb === "number"
+                    ? `${stats.db_size_mb.toFixed(2)} MB`
+                    : typeof stats.database_size_bytes === "number"
+                      ? `${(stats.database_size_bytes / 1024 / 1024).toFixed(2)} MB`
+                      : "未知")}
+              </span>
             </div>
           </div>
         ) : (
