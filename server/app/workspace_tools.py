@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -114,6 +115,54 @@ def _is_dangerous_command(command: str) -> bool:
     ):
         return True
     return False
+
+
+# ----------------------------------------------------------------------
+# Command execution: argv by default, shell only when explicitly enabled
+# ----------------------------------------------------------------------
+# `shell=True` plus a string means the whole command goes through cmd.exe /
+# /bin/sh: pipes, redirects, `&&` and `;` all get interpreted, and so does
+# anything the model manages to smuggle into an argument. Running an argv
+# list with shell=False removes that entire class: there is no shell to
+# interpret, so `; rm -rf ...` is just a weird filename.
+#
+# The cost is that genuinely shell-shaped commands (pipes, redirects) stop
+# working. Rather than silently falling back to a shell — which would undo
+# the whole point — those are refused unless the operator opts in with
+# JARVIS_WORKSPACE_ALLOW_SHELL=1.
+_SHELL_OPERATORS = ("|", ">", "<", "&&", "||", ";", "`", "$(", "\n", "&")
+
+# `cd` is a shell builtin; without a shell there is no program to exec.
+_SHELL_BUILTINS = {"cd", "set", "export", "source", "pushd", "popd"}
+
+
+def _split_command(command: str) -> list[str]:
+    """Split a command string into an argv list.
+
+    Uses a posix lexer with backslash escapes disabled: that keeps Windows
+    paths (`C:\\Users\\foo`) intact while still honouring quotes, which
+    `shlex.split(..., posix=False)` does not (it leaves the quote characters
+    inside the token).
+    """
+    lexer = shlex.shlex(command, posix=True)
+    lexer.whitespace_split = True
+    lexer.escape = ""
+    lexer.commenters = ""
+    return list(lexer)
+
+
+def _needs_shell(command: str) -> bool:
+    """True if the command cannot run without a shell (pipes, redirects...)."""
+    return any(op in command for op in _SHELL_OPERATORS)
+
+
+def _shell_allowed() -> bool:
+    return os.environ.get("JARVIS_WORKSPACE_ALLOW_SHELL", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def _is_code_file(path: Path) -> bool:
@@ -364,13 +413,14 @@ class WorkspaceWriteFileTool(BaseTool):
 
 class WorkspaceRunCommandTool(BaseTool):
     name = "workspace_run_command"
-    # A6 — the only built-in tool that spawns an arbitrary shell. The flag is
-    # enforced: with an approval gate attached the call blocks until the user
+    # A6 — with an approval gate attached the call blocks until the user
     # confirms, and a denial/timeout never reaches subprocess.
     requires_approval = True
     description = (
-        "Run a shell command inside the active workspace directory. "
+        "Run a command inside the active workspace directory. "
         "Use this to run tests, install dependencies, build, or check lint. "
+        "Commands are executed WITHOUT a shell: pipes (|), redirects (>), and "
+        "chaining (&&, ;) are not supported — run one command at a time. "
         "Be careful with destructive commands."
     )
     parameters_schema = {
@@ -400,10 +450,42 @@ class WorkspaceRunCommandTool(BaseTool):
                 f"Blocked potentially dangerous command: {command}", success=False
             )
 
+        if _needs_shell(command):
+            # Pipes / redirects need a real shell. Refusing by default is the
+            # point of running argv at all; requiring an env var makes the
+            # escape hatch deliberate and greppable instead of a silent
+            # fallback that quietly re-enables everything we just removed.
+            if not _shell_allowed():
+                logger.warning("Refused shell-shaped workspace command: %s", command)
+                return ToolResult(
+                    "Command uses shell syntax (pipe / redirect / &&). "
+                    "Shell execution is disabled by default. "
+                    "Set JARVIS_WORKSPACE_ALLOW_SHELL=1 and restart the backend "
+                    "to allow it, or rewrite the command without shell syntax.",
+                    success=False,
+                )
+            argv: list[str] | str = command
+            use_shell = True
+        else:
+            try:
+                argv = _split_command(command)
+            except ValueError as e:
+                return ToolResult(f"Could not parse command: {e}", success=False)
+            if not argv:
+                return ToolResult("Empty command.", success=False)
+            if argv[0].lower() in _SHELL_BUILTINS:
+                return ToolResult(
+                    f"'{argv[0]}' is a shell builtin and is not available without "
+                    "a shell. Use an absolute path or enable "
+                    "JARVIS_WORKSPACE_ALLOW_SHELL=1.",
+                    success=False,
+                )
+            use_shell = False
+
         try:
             proc = subprocess.run(
-                command,
-                shell=True,
+                argv,
+                shell=use_shell,
                 cwd=ws,
                 capture_output=True,
                 text=True,
