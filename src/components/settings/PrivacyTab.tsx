@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { deleteSecret, getSecretsStatus, saveSecret } from "../../lib/api";
+import type { SecretsStatus } from "../../lib/api";
 
 interface PrivacyStats {
   conversation_count: number;
@@ -14,6 +16,9 @@ export default function PrivacyTab({ active }: { active: boolean }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+  const [secrets, setSecrets] = useState<SecretsStatus | null>(null);
+  const [keyInput, setKeyInput] = useState("");
+  const [secretBusy, setSecretBusy] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -36,11 +41,54 @@ export default function PrivacyTab({ active }: { active: boolean }) {
     if (active && !stats) {
       void fetchStats();
     }
-  }, [active, stats, fetchStats]);
+    if (active && !secrets) {
+      void fetchSecrets();
+    }
+  }, [active, stats, secrets, fetchStats]);
+
+  const fetchSecrets = useCallback(async () => {
+    try {
+      setSecrets(await getSecretsStatus());
+    } catch {
+      // 后端是旧版时没有这个端点，密钥卡片就不显示，不影响其他设置
+      setSecrets(null);
+    }
+  }, []);
 
   const flash = (text: string) => {
     setMsg(text);
     setTimeout(() => setMsg(null), 3000);
+  };
+
+  const handleSaveKey = async () => {
+    if (!keyInput.trim()) {
+      flash("请输入要保存的 API Key");
+      return;
+    }
+    setSecretBusy(true);
+    try {
+      await saveSecret("llm_api_key", keyInput.trim());
+      setKeyInput("");
+      await fetchSecrets();
+      flash("已存入系统凭据管理器");
+    } catch (e) {
+      flash(`存入失败：${e instanceof Error ? e.message : "未知错误"}`);
+    } finally {
+      setSecretBusy(false);
+    }
+  };
+
+  const handleDeleteKey = async () => {
+    setSecretBusy(true);
+    try {
+      await deleteSecret("llm_api_key");
+      await fetchSecrets();
+      flash("已从凭据管理器移除，回退到 .env");
+    } catch (e) {
+      flash(`移除失败：${e instanceof Error ? e.message : "未知错误"}`);
+    } finally {
+      setSecretBusy(false);
+    }
   };
 
   const handleExport = async () => {
@@ -146,6 +194,81 @@ export default function PrivacyTab({ active }: { active: boolean }) {
           <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>无数据</div>
         )}
       </div>
+
+      {/* 密钥存储 */}
+      {secrets?.supported && (
+        <div
+          style={{
+            padding: "16px",
+            borderRadius: "8px",
+            marginBottom: "16px",
+            background: "var(--bg-secondary, rgba(255,255,255,0.03))",
+            border: "1px solid var(--border, rgba(255,255,255,0.06))",
+          }}
+        >
+          <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "12px" }}>
+            密钥存储
+          </div>
+
+          <div className="about-row" style={{ marginBottom: "10px" }}>
+            <span className="label">LLM API Key</span>
+            <span
+              className="value"
+              style={{
+                color:
+                  secrets.sources.llm_api_key === "keychain"
+                    ? "var(--success)"
+                    : "var(--text-muted)",
+              }}
+            >
+              {secrets.sources.llm_api_key === "keychain"
+                ? "系统凭据管理器"
+                : secrets.sources.llm_api_key === "env"
+                  ? ".env 明文"
+                  : "未配置"}
+            </span>
+          </div>
+
+          <input
+            type="password"
+            className="setting-input"
+            placeholder={
+              secrets.sources.llm_api_key === "keychain"
+                ? "已存于凭据管理器，可粘贴新值覆盖"
+                : "粘贴 API Key 以存入系统凭据管理器"
+            }
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            style={{ width: "100%", marginBottom: "10px" }}
+          />
+
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              className="setting-btn"
+              onClick={handleSaveKey}
+              disabled={secretBusy}
+              style={{ flex: 1 }}
+            >
+              {secretBusy ? "处理中..." : "存入凭据管理器"}
+            </button>
+            {secrets.sources.llm_api_key === "keychain" && (
+              <button
+                className="setting-btn"
+                onClick={handleDeleteKey}
+                disabled={secretBusy}
+                style={{ flex: 1 }}
+              >
+                移除
+              </button>
+            )}
+          </div>
+
+          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "10px", lineHeight: 1.6 }}>
+            存入后由 Windows 凭据管理器保管，优先级高于 <code>.env</code>；<code>.env</code>{" "}
+            里那份不会被删除，只是不再生效。
+          </div>
+        </div>
+      )}
 
       {/* 操作按钮 */}
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

@@ -6,11 +6,13 @@ import logging
 
 import httpx
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from .. import database as db
 from .. import persona as persona_mod
-from ..config import settings
+from ..config import reload_secrets, settings, secret_sources
 from ..model_names import normalize_model_id, validate_model_id
+from ..secrets import delete_secret, is_supported, set_secret
 from ..models import (
     ModelConfig,
     ModelProfile,
@@ -196,3 +198,71 @@ async def api_switch_model(body: SwitchModelRequest):
         raise HTTPException(404, f"Model profile '{body.profile_id}' not found")
     logger.info("Switched to model profile: %s (%s)", profile["name"], profile["model"])
     return profile
+
+
+# ── 密钥存储 ──────────────────────────────────────────────────────────
+
+# 只有这些字段允许存进凭据管理器。放开的话，这个端点就成了往系统凭据里
+# 写任意内容的口子。
+_MANAGED_SECRETS = frozenset({"llm_api_key"})
+
+
+class SecretValue(BaseModel):
+    value: str
+
+
+def _reload_sources() -> None:
+    """凭据变动后让内存里的 settings 重新取一遍，来源缓存随之刷新。"""
+    reload_secrets()
+
+
+@router.get("/secrets")
+async def api_list_secrets():
+    """报告每个受保护密钥当前来自哪里。
+
+    "我明明存进凭据管理器了，怎么还是 401" 这类问题，根源往往是 .env 里
+    还有一份旧明文、或压根没写进去。把来源暴露出来，用户一次就能确认。
+    """
+    return {
+        "supported": is_supported(),
+        "managed": sorted(_MANAGED_SECRETS),
+        "sources": secret_sources(),
+    }
+
+
+@router.post("/secrets/{name}")
+async def api_save_secret(name: str, body: SecretValue):
+    """把密钥存入系统凭据管理器。
+
+    只存不删 .env：删文件是破坏性的，且用户可能还想保留回退。存进去之后
+    凭据管理器优先级更高，.env 里那份自然不再生效。
+    """
+    if name not in _MANAGED_SECRETS:
+        raise HTTPException(404, f"密钥 '{name}' 不支持存入凭据管理器")
+    if not body.value.strip():
+        raise HTTPException(400, "密钥不能为空")
+
+    try:
+        set_secret(name, body.value.strip())
+    except RuntimeError as e:
+        # 写不进去必须明确报错，静默失败会让用户以为已经安全存好了
+        raise HTTPException(500, str(e))
+
+    _reload_sources()
+    logger.info("密钥 '%s' 已存入系统凭据管理器", name)
+    return {"status": "ok", "name": name, "source": secret_sources().get(name)}
+
+
+@router.delete("/secrets/{name}")
+async def api_delete_secret(name: str):
+    """从凭据管理器移除密钥，回退到 .env（若还有）。"""
+    if name not in _MANAGED_SECRETS:
+        raise HTTPException(404, f"密钥 '{name}' 不支持存入凭据管理器")
+
+    removed = delete_secret(name)
+    _reload_sources()
+    return {
+        "status": "ok" if removed else "not_found",
+        "name": name,
+        "source": secret_sources().get(name),
+    }

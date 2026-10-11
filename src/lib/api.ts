@@ -624,3 +624,35 @@ export async function getSttStatus(): Promise<{
 }> {
   return request("/api/voice/stt-status");
 }
+
+// ====== 密钥存储（系统凭据管理器） ======
+
+export type SecretSource = "keychain" | "env" | "missing";
+
+export interface SecretsStatus {
+  supported: boolean;
+  managed: string[];
+  sources: Record<string, SecretSource>;
+}
+
+export async function getSecretsStatus(): Promise<SecretsStatus> {
+  return request("/api/config/secrets");
+}
+
+export async function saveSecret(
+  name: string,
+  value: string
+): Promise<{ status: string; name: string; source: SecretSource }> {
+  return request(`/api/config/secrets/${encodeURIComponent(name)}`, {
+    method: "POST",
+    body: JSON.stringify({ value }),
+  });
+}
+
+export async function deleteSecret(
+  name: string
+): Promise<{ status: string; name: string; source: SecretSource }> {
+  return request(`/api/config/secrets/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+}

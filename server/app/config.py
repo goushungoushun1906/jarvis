@@ -78,5 +78,42 @@ class Settings(BaseSettings):
     update_check_timeout: float = 8.0  # seconds; 远端不可达时静默降级
 
 
+# 允许存进系统凭据管理器的密钥。凭据管理器优先，.env 只是回退：
+# 已经把密钥存进去的用户不应该因为 .env 里还留着一份旧明文而糊涂。
+_SECRET_FIELDS = ("llm_api_key",)
+
+
+def _apply_keychain(target: "Settings") -> dict[str, str]:
+    """用凭据管理器里的值覆盖 .env 明文，并记录每个密钥的来源。
+
+    来源要在界面上可见，否则"我明明存进凭据管理器了，怎么还是 401"会变成
+    无解的猜谜 —— 用户无法判断到底读的是哪一份。
+    """
+    from .secrets import get_secret
+
+    sources: dict[str, str] = {}
+    for field in _SECRET_FIELDS:
+        stored = get_secret(field)
+        if stored:
+            object.__setattr__(target, field, stored)
+            sources[field] = "keychain"
+        else:
+            sources[field] = "env" if getattr(target, field, "") else "missing"
+    return sources
+
+
 # Singleton instance
 settings = Settings()
+_SECRET_SOURCES = _apply_keychain(settings)
+
+
+def secret_sources() -> dict[str, str]:
+    """每个受保护密钥当前实际来自哪里：keychain / env / missing。"""
+    return dict(_SECRET_SOURCES)
+
+
+def reload_secrets() -> dict[str, str]:
+    """凭据变动后重新解析，并刷新 secret_sources() 读到的那份缓存。"""
+    global _SECRET_SOURCES
+    _SECRET_SOURCES = _apply_keychain(settings)
+    return dict(_SECRET_SOURCES)
