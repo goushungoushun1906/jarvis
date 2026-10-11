@@ -29,14 +29,21 @@ the user out of their own app and that is worse than the threat:
 * ``JARVIS_ALLOW_ANY_HOST=1``   — skip the Host check (e.g. LAN proxying).
 
 Deliberately *not* covered here (belongs to the full A6 work, not the minimal
-fix set): per-request auth tokens, tool-call consent enforcement, and
-sandboxing ``workspace_run_command``.
+fix set): tool-call consent enforcement and sandboxing
+``workspace_run_command``. Both landed separately — see :mod:`app.approval`
+and ``JARVIS_WORKSPACE_ALLOW_SHELL``.
+
+Note that neither guard above can identify *our* app: a page in the user's
+browser and the packaged app both arrive from loopback, and both may present
+``Origin: null``. Identification is what :class:`ApiTokenGuard` adds.
 """
 
 from __future__ import annotations
 
 import os
 import re
+
+from . import api_token
 
 # Loopback hosts the backend is allowed to answer for.
 ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "[::1]"})
@@ -125,6 +132,65 @@ def cors_kwargs() -> dict:
         "allow_methods": ["*"],
         "allow_headers": ["*"],
     }
+
+
+class ApiTokenGuard:
+    """Pure-ASGI middleware requiring ``X-Jarvis-Token`` on API requests.
+
+    Same "no BaseHTTPMiddleware" rule as :class:`LoopbackHostGuard`: a
+    buffering wrapper would undo SSE streaming.
+
+    CORS preflight (``OPTIONS``) is exempt. A browser sending a custom header
+    must preflight first, and that preflight carries no token — gating it would
+    mean the real request is never sent at all.
+    """
+
+    def __init__(self, app, token: str = "") -> None:
+        self.app = app
+        self.token = token or api_token.load_or_create_token()
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+
+        if not api_token.is_enabled():
+            await self.app(scope, receive, send)
+            return
+
+        if (scope.get("method") or "GET").upper() == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
+
+        if api_token.is_public_path(scope.get("path") or ""):
+            await self.app(scope, receive, send)
+            return
+
+        presented = None
+        for key, value in scope.get("headers") or []:
+            if key.decode("latin-1").lower() == api_token.TOKEN_HEADER:
+                try:
+                    presented = value.decode("latin-1")
+                except UnicodeDecodeError:
+                    presented = None
+                break
+
+        if api_token.token_matches(presented, self.token):
+            await self.app(scope, receive, send)
+            return
+
+        body = b'{"detail":"Missing or invalid API token"}'
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 401,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode("ascii")),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
 
 
 class LoopbackHostGuard:

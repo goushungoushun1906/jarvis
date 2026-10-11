@@ -40,7 +40,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import database as db
 from app.config import settings
 from app.models import HealthResponse
-from app.security import LoopbackHostGuard, cors_kwargs
+from app.security import ApiTokenGuard, LoopbackHostGuard, cors_kwargs
 from app.routes import chat as chat_router
 from app.routes import config as config_router
 from app.routes import costs as costs_router
@@ -162,6 +162,12 @@ app.add_middleware(CORSMiddleware, **cors_kwargs())
 # reverse registration order): a rebinding attempt is refused before any CORS
 # work happens. Pure ASGI, so SSE frames still stream through untouched.
 app.add_middleware(LoopbackHostGuard)
+
+# Registered last so it sits outermost: a request with no token is refused
+# before CORS or routing see it. The token never reaches the renderer —
+# Electron attaches the header at the network layer. Active in packaged
+# builds; off in dev/tests unless JARVIS_REQUIRE_API_TOKEN=1.
+app.add_middleware(ApiTokenGuard)
 
 if env_config.debug:
     app.add_middleware(debug_middleware)

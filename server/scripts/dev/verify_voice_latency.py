@@ -36,13 +36,16 @@ def start_backend(use_exe: bool) -> subprocess.Popen:
     if use_exe:
         cmd = [os.path.join(SERVER_DIR, "backend-dist", "backend.exe")]
         cwd = os.path.join(SERVER_DIR, "backend-dist")
+        # 打包版默认要求 per-request token；本脚本只关心延迟，显式关掉。
+        env = {**os.environ, "JARVIS_DISABLE_API_TOKEN": "1"}
     else:
         cmd = [os.path.join(SERVER_DIR, ".venv", "Scripts", "python.exe"),
                "-m", "uvicorn", "main:app", "--host", "127.0.0.1",
                "--port", "18200"]
         cwd = SERVER_DIR
+        env = None
     return subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
+                            stderr=subprocess.DEVNULL, env=env)
 
 
 def wait_ready(timeout: int = 120) -> bool:

@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu, globalShortcut, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, globalShortcut, clipboard, session } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const { net } = require('electron');
 
 // --- Auto-start registry helper (Windows) ---
@@ -68,6 +69,53 @@ function isBackendPortInUse() {
     });
     tester.listen(BACKEND_PORT, '127.0.0.1');
   });
+}
+
+/**
+ * 后端 API token 的路径 —— 必须和 app/api_token.py 的 token_dir() 一致。
+ * 两边各自算同一个路径，不需要 IPC，也不会出现"一个读旧的一个读新的"。
+ */
+function apiTokenPath() {
+  const appdata = process.env.APPDATA;
+  const dir = appdata
+    ? path.join(appdata, 'JARVIS')
+    : path.join(os.homedir(), '.jarvis');
+  return path.join(dir, 'api_token.txt');
+}
+
+/**
+ * 读取后端 token。文件由后端首次启动时创建，所以这里**每次请求都读**：
+ * Electron 往往比后端先起来，启动时读会是空的。
+ */
+function readApiToken() {
+  try {
+    return fs.readFileSync(apiTokenPath(), 'utf8').trim() || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * 给所有发往后端的请求自动带上 token。
+ *
+ * 在**网络层**注入而不是把 token 交给渲染进程，是这里的关键：前端一旦
+ * 出现 XSS，拿不到 token 也就无法凭它调用截图 / 剪贴板 / 系统控制这些
+ * 工具；而浏览器里的任意网页既读不到这个文件，也发不出这个头。
+ */
+function attachApiTokenToRequests() {
+  try {
+    const filter = { urls: [`http://127.0.0.1:${BACKEND_PORT}/*`] };
+    session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+      const token = readApiToken();
+      if (token) {
+        details.requestHeaders['X-Jarvis-Token'] = token;
+      }
+      callback({ requestHeaders: details.requestHeaders });
+    });
+  } catch (err) {
+    // 注入失败不能让应用起不来 —— 后端若不强制校验，功能仍可正常。
+    console.warn('Failed to attach API token to requests:', err);
+  }
 }
 
 /**
@@ -734,6 +782,9 @@ ipcMain.on('selection-hide', () => {
 });
 
 app.whenReady().then(async () => {
+  // 必须在任何后端/前端请求之前装上，否则首批请求会 401。
+  attachApiTokenToRequests();
+
   try {
     await startBackend();
   } catch (err) {

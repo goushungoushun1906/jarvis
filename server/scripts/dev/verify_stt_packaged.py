@@ -67,6 +67,9 @@ def start_backend(use_dev: bool, exe_path: str) -> subprocess.Popen:
         cmd = [exe_path]
         cwd = os.path.dirname(exe_path) or "."
     env = {**os.environ, "SERVER_PORT": str(resolve_port())}
+    if not use_dev:
+        # 打包版默认要求 per-request token；本脚本只关心语音链路，显式关掉。
+        env["JARVIS_DISABLE_API_TOKEN"] = "1"
     return subprocess.Popen(cmd, cwd=cwd, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 

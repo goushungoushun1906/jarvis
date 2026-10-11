@@ -43,14 +43,19 @@ def start_backend(use_exe: bool, exe_dir: str = EXE_DIR):
     if use_exe:
         cmd = [os.path.join(exe_dir, "backend.exe")]
         cwd = exe_dir
+        # 打包版默认要求 per-request token（由 Electron 在网络层注入）。
+        # 本脚本校验的是 Origin / Host 这两层，token 是独立的一层，
+        # 另有 tests/test_api_token.py 覆盖，这里显式关掉以免脚本全 401。
+        env = {**os.environ, "JARVIS_DISABLE_API_TOKEN": "1"}
     else:
         py = os.path.join(SERVER_DIR, ".venv", "Scripts", "python.exe")
         cmd = [py, "-m", "uvicorn", "main:app", "--host", "127.0.0.1",
                "--port", "18200", "--app-dir", SERVER_DIR]
         cwd = SERVER_DIR
+        env = None
     print(f"启动: {' '.join(cmd[:2])} ...", flush=True)
     return subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
+                            stderr=subprocess.DEVNULL, env=env)
 
 
 def check_guards() -> list[tuple[str, bool, str]]:
