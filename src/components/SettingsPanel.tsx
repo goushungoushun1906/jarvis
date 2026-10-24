@@ -7,10 +7,11 @@ import ModelsTab from "./settings/ModelsTab";
 import PersonaTab from "./settings/PersonaTab";
 import PrivacyTab from "./settings/PrivacyTab";
 import McpTab from "./settings/McpTab";
+import WakeWordTab from "./settings/WakeWordTab";
 import type { ModelItem } from "./settings/types";
 import "./SettingsPanel.css";
 
-type TabId = "models" | "persona" | "plugins" | "mcp" | "privacy" | "costs";
+type TabId = "models" | "persona" | "plugins" | "mcp" | "wake" | "privacy" | "costs";
 
 interface SettingsPanelProps {
   config: AppConfig | null;
@@ -80,6 +81,13 @@ export default function SettingsPanel({
       label: "MCP",
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>
+      ),
+    },
+    {
+      id: "wake",
+      label: "语音唤醒",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
       ),
     },
     {
@@ -212,6 +220,8 @@ export default function SettingsPanel({
         )}
 
         {activeTab === "mcp" && <McpTab onConfigUpdate={onConfigUpdate} notify={notify} />}
+
+        {activeTab === "wake" && <WakeWordTab notify={notify} />}
 
         {/* PrivacyTab 常驻挂载会重复拉统计，所以只在激活时渲染 */}
         {activeTab === "privacy" && <PrivacyTab active />}

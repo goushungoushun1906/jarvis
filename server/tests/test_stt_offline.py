@@ -1,4 +1,4 @@
-"""Tests for offline STT model resolution and hotword repair.
+"""Tests for offline STT model resolution.
 
 这些用例存在的理由都来自真实故障，不是为覆盖率凑的：
 
@@ -7,8 +7,7 @@
    外部目录覆盖。
 2. is_model_available() 曾经只要"能 import faster_whisper"就返回 True，
    而实际加载会去 HuggingFace 下载模型，把离线环境卡成超时。
-3. small 模型把"贾维斯"稳定识别成"假 为 为师"，2GB 大模型虽然能识别对
-   但要 25s；热词纠错是为了在保留速度的前提下修回产品名。
+3. 唤醒不再走语音识别。音译词“贾维斯”曾被小模型稳定听成“假为为师”，   靠一张热词纠错表兜底；改用专用关键词引擎后（见 docs/WAKE_WORD_DESIGN.md），   那张表连同前端音近正则一并删除 —— 留着只会把正常文本里的同音词改坏。
 """
 from __future__ import annotations
 
@@ -106,40 +105,112 @@ def test_model_status_reports_search_roots(tmp_path, monkeypatch):
     json.dumps(status)  # 必须可序列化（要经 HTTP 返回）
 
 
-# ─── 热词纠错 ────────────────────────────────────────────────────────
+
+# ── Paraformer（中文指令识别的新主力）────────────────────────────────
+#
+# 这一组要锁住的是"换了引擎但没生效"这类静默失败：模型目录名带日期版本号，
+# 拼路径必然踩空；采样率不对不会报错，只会输出一堆错字。
+
+def _make_paraformer_dir(base, name="sherpa-onnx-paraformer-zh-small-2024-03-09"):
+    d = base / "models" / "asr" / name
+    d.mkdir(parents=True)
+    (d / "tokens.txt").write_text("<blk> 0\n", encoding="utf-8")
+    (d / "model.int8.onnx").write_bytes(b"int8")
+    return d
 
 
-def test_hotword_fixes_product_name():
-    """Vosk small 实测把"贾维斯"识别成"假 为 为师"。"""
-    assert stt._apply_hotword_fixes("你好 假 为 为师 现在 几点 了") == (
-        "你好 贾维斯 现在 几点 了"
+def test_paraformer_dir_found_by_scanning(tmp_path, monkeypatch):
+    """目录名带日期后缀，只能"扫目录 + 验内容"，不能拼路径。"""
+    d = _make_paraformer_dir(tmp_path)
+    monkeypatch.setenv("JARVIS_STT_MODEL_DIR", str(tmp_path / "models"))
+    monkeypatch.delenv("JARVIS_ASR_MODEL_DIR", raising=False)
+    assert stt._default_paraformer_dir() == str(d)
+
+
+def test_paraformer_dir_env_override(tmp_path, monkeypatch):
+    monkeypatch.setenv("JARVIS_ASR_MODEL_DIR", str(tmp_path))
+    (tmp_path / "tokens.txt").write_text("<blk> 0\n", encoding="utf-8")
+    (tmp_path / "model.onnx").write_bytes(b"fp32")
+    assert stt._default_paraformer_dir() == str(tmp_path)
+
+
+def test_paraformer_dir_ignores_incomplete_dir(tmp_path, monkeypatch):
+    """只有词表没有模型，等于没装——必须跳过而不是返回一个坏目录。"""
+    d = tmp_path / "models" / "asr" / "broken-2024-01-01"
+    d.mkdir(parents=True)
+    (d / "tokens.txt").write_text("<blk> 0\n", encoding="utf-8")
+    monkeypatch.setenv("JARVIS_STT_MODEL_DIR", str(tmp_path / "models"))
+    monkeypatch.delenv("JARVIS_ASR_MODEL_DIR", raising=False)
+    assert stt._default_paraformer_dir() is None
+
+
+def test_paraformer_files_prefers_int8(tmp_path):
+    (tmp_path / "tokens.txt").write_text("<blk> 0\n", encoding="utf-8")
+    (tmp_path / "model.onnx").write_bytes(b"big")
+    (tmp_path / "model.int8.onnx").write_bytes(b"small")
+    model, tokens = stt._paraformer_files(str(tmp_path))
+    assert model.endswith("model.int8.onnx")
+    assert tokens.endswith("tokens.txt")
+
+
+def test_paraformer_files_none_without_tokens(tmp_path):
+    (tmp_path / "model.int8.onnx").write_bytes(b"x")
+    assert stt._paraformer_files(str(tmp_path)) is None
+
+
+def test_resample_doubles_length_at_double_rate():
+    import numpy as np
+    src = np.arange(8000, dtype=np.float32)
+    out = stt._resample(src, 8000, 16000)
+    assert len(out) == 16000
+    # 端点必须保持，否则整段音频会被拉伸错位
+    assert out[0] == 0 and abs(out[-1] - 7999) < 1
+
+
+def test_resample_is_identity_when_rate_matches():
+    import numpy as np
+    src = np.arange(100, dtype=np.float32)
+    out = stt._resample(src, 16000, 16000)
+    assert len(out) == 100
+
+
+def test_transcribe_paraformer_returns_none_without_model(monkeypatch):
+    monkeypatch.setattr(stt, "_default_paraformer_dir", lambda: None)
+    monkeypatch.setattr(stt, "_paraformer", None)
+    monkeypatch.setattr(stt, "_PARAFORMER_LOADED", False)
+    assert stt._transcribe_paraformer(b"\x00" * 3200, 16000) is None
+
+
+def test_transcribe_wav_prefers_paraformer(monkeypatch):
+    """中文指令识别优先走 Paraformer：它比 Vosk 准一档，不该排在后面。"""
+    calls = []
+    monkeypatch.setattr(
+        stt, "_transcribe_paraformer", lambda pcm, sr: calls.append("paraformer") or "你好贾维斯"
     )
+    monkeypatch.setattr(
+        stt, "_transcribe_vosk", lambda pcm, sr: calls.append("vosk") or "你好假微丝"
+    )
+    monkeypatch.setattr(stt, "_transcribe_whisper", lambda pcm, sr: None)
+
+    wav = _wav_bytes(16000, [0] * 1600)
+    assert stt.transcribe_wav(wav) == "你好贾维斯"
+    assert calls == ["paraformer"], "命中 Paraformer 后不该再跑 Vosk"
 
 
-def test_hotword_fixes_compact_form():
-    assert stt._apply_hotword_fixes("你好假维斯,现在级电了") == "你好贾维斯,现在级电了"
+def test_transcribe_wav_falls_back_to_vosk(monkeypatch):
+    monkeypatch.setattr(stt, "_transcribe_paraformer", lambda pcm, sr: None)
+    monkeypatch.setattr(stt, "_transcribe_whisper", lambda pcm, sr: None)
+    monkeypatch.setattr(stt, "_transcribe_vosk", lambda pcm, sr: "兜底结果")
+    assert stt.transcribe_wav(_wav_bytes(16000, [0] * 1600)) == "兜底结果"
 
 
-def test_hotword_fixes_leaves_normal_chinese():
-    assert stt._apply_hotword_fixes("今天天气不错") == "今天天气不错"
-
-
-def test_hotword_fixes_preserves_english_spaces():
-    """英文不能被无条件去空格 —— 中文模型也会识别英文。"""
-    assert stt._apply_hotword_fixes("hello world") == "hello world"
-
-
-def test_hotword_fixes_empty():
-    assert stt._apply_hotword_fixes("") == ""
-
-
-def test_hotword_fixes_env_extension(monkeypatch):
-    monkeypatch.setenv("JARVIS_STT_HOTWORDS", "小爱同学=小艺, 天穹=天工")
-    fixes = stt._hotword_fixes()
-    assert fixes["小爱同学"] == "小艺"
-    assert fixes["天穹"] == "天工"
-
-
-def test_hotword_fixes_env_applied(monkeypatch):
-    monkeypatch.setenv("JARVIS_STT_HOTWORDS", "打开灯=开灯")
-    assert stt._apply_hotword_fixes("请 打开灯") == "请 开灯"
+def _wav_bytes(sample_rate: int, samples: list[int]) -> bytes:
+    """构造 16bit 单声道 WAV，供上面两条链路测试用。"""
+    import struct, io, wave
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(struct.pack(f"<{len(samples)}h", *samples))
+    return buf.getvalue()

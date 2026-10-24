@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback, useState, useMemo, Suspense } fr
 import type { Message, JavisStatus, ConnectionStatus, VoiceMode, ImageAttachment, FileAttachment, RightPanelTab } from "../lib/types";
 import MessageBubble from "./MessageBubble";
 import RegionSelector, { type Region } from "./RegionSelector";
+import ParticleAvatar from "./ParticleAvatar";
 import { captureRegionScreenshot } from "../lib/api";
 import "./ChatArea.css";
 
@@ -32,6 +33,14 @@ interface ChatAreaProps {
   onListeningChange?: (listening: boolean) => void;
   onPlayMessage: (content: string) => void;
   onStopVoice: () => void;
+  /** TTS 播放中的实时音量（0..1），供形象动画每帧读取。 */
+  levelRef?: React.MutableRefObject<number>;
+  // ====== 语音唤醒 ======
+  wakeEnabled: boolean;
+  wakePhase: "off" | "listening" | "armed" | "conversation";
+  wakeHeard: string;
+  wakeError?: string | null;
+  onWakeToggle: () => void;
   pendingImages: ImageAttachment[];
   pendingFiles: FileAttachment[];
   onImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -50,6 +59,7 @@ interface ChatAreaProps {
 export default function ChatArea({
   messages,
   isStreaming,
+  javisStatus,
   connectionStatus,
   error,
   input,
@@ -71,6 +81,12 @@ export default function ChatArea({
   onListeningChange,
   onPlayMessage,
   onStopVoice,
+  levelRef,
+  wakeEnabled,
+  wakePhase,
+  wakeHeard,
+  wakeError,
+  onWakeToggle,
   pendingImages,
   pendingFiles,
   onImageSelect,
@@ -186,6 +202,14 @@ export default function ChatArea({
 
   const hasMessages = messages.length > 0;
 
+  // 唤醒监听开着就是在听；但说话/思考优先级更高，不该被覆盖
+  const avatarState =
+    javisStatus === "speaking" || javisStatus === "thinking"
+      ? javisStatus
+      : wakeEnabled && wakePhase !== "off"
+        ? "listening"
+        : javisStatus;
+
   return (
     <div className="main-area">
       {showRegionSelector && (
@@ -227,9 +251,7 @@ export default function ChatArea({
       <div className={`msg-feed ${hasMessages ? 'has-msgs' : ''}`}>
         {messages.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-avatar">
-              <div className="empty-avatar-inner">J</div>
-            </div>
+            <ParticleAvatar state={avatarState} levelRef={levelRef} />
             <div className="empty-tagline">你好，我是 JARVIS</div>
             <div className="empty-sub">有什么可以帮你的？</div>
             <div className="suggestion-chips">
@@ -269,6 +291,21 @@ export default function ChatArea({
 
       {/* Input area */}
       <div className="input-area">
+        {wakeEnabled && (
+          <div className={`wake-bar ${wakePhase} ${wakeError ? "has-error" : ""}`}>
+            <span className="wake-dot" />
+            <span className="wake-text">
+              {wakeError
+                ? wakeError
+                : wakePhase === "armed"
+                  ? "已唤醒 — 请说指令"
+                  : wakePhase === "conversation"
+                    ? "对话中 — 继续说即可，停一会儿自动结束"
+                    : "语音唤醒已开启 — 说「你好贾维斯」"}
+            </span>
+            {!wakeError && wakeHeard && <span className="wake-heard">听到：{wakeHeard}</span>}
+          </div>
+        )}
         <div className="input-card">
           <textarea
             ref={textareaRef}
@@ -321,13 +358,33 @@ export default function ChatArea({
               </button>
               <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={onImageSelect} />
               <input ref={fileInputRef} type="file" accept=".txt,.pdf,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.application/pdf" hidden onChange={onFileSelect} />
+              {/* 语音唤醒：开启后持续监听，说「你好贾维斯」即可下指令 */}
+              <button
+                className={`input-icon-btn wake-btn ${wakeEnabled ? "active" : ""} ${wakePhase}`}
+                onClick={onWakeToggle}
+                disabled={connectionStatus === "offline"}
+                title={
+                  wakeEnabled
+                    ? wakePhase === "armed"
+                      ? "已唤醒 — 说指令（点击关闭监听）"
+                      : wakePhase === "conversation"
+                        ? "对话中 — 继续说即可（点击关闭监听）"
+                        : "正在监听唤醒词「你好贾维斯」（点击关闭）"
+                    : "开启语音唤醒：说「你好贾维斯」即可对话"
+                }
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+              </button>
             </div>
             <Suspense fallback={<div style={{width:32,height:32}}/>}>
               <VoiceControl
                 voiceMode={voiceMode} selectedVoice={selectedVoice}
                 onVoiceModeChange={onVoiceModeChange} onVoiceSelect={onVoiceSelect}
                 onTranscript={onVoiceTranscript} onListeningChange={onListeningChange}
-                disabled={isStreaming || connectionStatus === "offline"}
+                disabled={isStreaming || connectionStatus === "offline" || wakeEnabled}
               />
             </Suspense>
             <div className="input-actions-right">

@@ -361,27 +361,57 @@ export async function transcribeAudio(blob: Blob): Promise<string> {
 }
 
 // ====== Server-side recording (bypasses browser getUserMedia AGC issues) ======
-export async function serverRecordStart(): Promise<void> {
-  const resp = await fetch(`${API_BASE}/api/voice/record/start`, { method: "POST" });
+
+export interface ServerRecordOptions {
+  /** 说完自动停（VAD）：检测到人声后静音 ~700ms 即认为说完了。 */
+  vad?: boolean;
+  /** 一直没人开口时等多久放弃（毫秒）。 */
+  leadingMs?: number;
+  /** 单次采集硬上限（毫秒）。 */
+  maxMs?: number;
+}
+
+export async function serverRecordStart(opts?: ServerRecordOptions): Promise<void> {
+  const resp = await fetch(`${API_BASE}/api/voice/record/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      vad: opts?.vad ?? false,
+      leading_ms: opts?.leadingMs ?? 5000,
+      max_ms: opts?.maxMs ?? 8000,
+    }),
+  });
   if (!resp.ok) throw new Error("Failed to start server recording");
 }
 
 /** 服务器录音的识别结果。
  *
- * 后端现在会区分三种失败：录音太短、麦克风没声音、有声音但没听清。
- * 以前只返回 text，前端拿空字符串就当"什么都没发生"，用户完全看不出
- * 是权限问题还是没听清，所以这里把 error/level 一并带回来。
+ * 后端现在会区分四种情况：正常文本、录音太短、麦克风没声音、有声音但
+ * 没听清。以前只返回 text，前端拿空字符串就当"什么都没发生"，用户完全
+ * 看不出是权限问题还是没听清，所以把 error/idle/level 一并带回来。
  */
 export interface ServerRecordResult {
   text: string;
   duration: number;
+  /** VAD 模式下等了 leading 时长也没人说话——正常空闲，不是故障。 */
+  idle?: boolean;
   error?: string;
   level?: number;
   level_pct?: number;
 }
 
-export async function serverRecordStop(): Promise<ServerRecordResult> {
-  const resp = await fetch(`${API_BASE}/api/voice/record/stop`, { method: "POST" });
+export async function serverRecordStop(
+  opts?: { immediate?: boolean; signal?: AbortSignal },
+): Promise<ServerRecordResult> {
+  const resp = await fetch(`${API_BASE}/api/voice/record/stop`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // immediate=true：VAD 采集中途手动截断（默认是"等说完再转写"）
+    body: JSON.stringify({ immediate: opts?.immediate ?? false }),
+    // VAD 模式下这个请求会一直挂到"说完话"为止。连续对话里一旦某个请求
+    // 没回来，整个会话循环就再也没机会推进——所以必须能从外面掐断。
+    signal: opts?.signal,
+  });
   if (!resp.ok) throw new Error("Failed to stop server recording");
   return resp.json();
 }
@@ -655,4 +685,226 @@ export async function deleteSecret(
   return request(`/api/config/secrets/${encodeURIComponent(name)}`, {
     method: "DELETE",
   });
+}
+
+// ====== 语音唤醒 v2（Porcupine 中文关键词） ======
+//
+// 旧链路是前端每 3 秒录一段、送识别、拿文本正则找「贾维斯」，延迟高且常把
+// 唤醒词切在窗口边界。现在由后端常驻的关键词引擎逐帧判定，事件直接推过来，
+// 前端只负责订阅与展示。接口细节见 docs/WAKE_WORD_DESIGN.md。
+
+export interface WakeSelfCheck {
+  frozen: boolean;
+  meipass: string | null;
+  model_path: string;
+  model_exists: boolean;
+  keyword_paths: string[];
+  keyword_paths_exist: boolean[];
+  library_path: string;
+  library_exists: boolean;
+  capture_dir_exists: boolean;
+  pvporcupine_importable: boolean;
+  pyaudio_importable: boolean;
+  // --- sherpa-onnx（开放词表引擎）---
+  sherpa_importable?: boolean;
+  sherpa_model_dir?: string;
+  sherpa_ready?: boolean;
+  sherpa_keywords_src?: string;
+  sherpa_keywords_src_exists?: boolean;
+  sherpa_threshold?: number;
+  sherpa_dll_dirs?: string[];
+  sherpa_ort_version?: string;
+  /** true 表示系统目录存在游离 onnxruntime.dll，是 DLL 冲突的潜在源头 */
+  stray_system32_onnxruntime?: boolean;
+  // --- Vosk（受限语法唤醒引擎）---
+  vosk_importable?: boolean;
+  vosk_model?: string;
+  vosk_ready?: boolean;
+  /**
+   * 实际生效的唤醒语法条目（最多 8 条）。
+   * 中文必须以「单字序列」书写，写错不会报错、只会 0 命中，
+   * 所以要在界面上看得见，方便一眼确认语法生成对了。
+   */
+  vosk_grammar?: string[];
+}
+
+export interface WakeInfo {
+  status: string;
+  engine: string | null;
+  keywords: string[];
+  keyword_paths: string[];
+  sensitivities: number[];
+  device: number | null;
+  access_key_set: boolean;
+  cooldown_s: number;
+  dual_threshold: boolean;
+  allow_energy_fallback: boolean;
+  save_captures: boolean;
+  peak_confidence: number;
+  peak_level: number;
+  detections_total: number;
+  false_alarms_marked: number;
+  running: boolean;
+  error: string | null;
+  hint: string | null;
+  self_check: WakeSelfCheck;
+}
+
+export interface WakeDevice {
+  index: number;
+  name: string;
+  max_input_channels: number;
+  default_sample_rate: number;
+  host_api: string;
+  is_default: boolean;
+  likely_builtin: boolean;
+}
+
+export interface WakeDetection {
+  keyword: string;
+  index: number;
+  score: number;
+  level: number;
+  sensitivity: number;
+  engine: string | null;
+  ts: number;
+  capture_id: string | null;
+  cooldown_s: number;
+}
+
+export interface WakeCapture {
+  id: string;
+  ts: number;
+  keyword: string;
+  score: number;
+  label: string | null;
+}
+
+export async function getWakeInfo(): Promise<WakeInfo> {
+  return request<WakeInfo>("/api/wakeword/info");
+}
+
+export async function startWakeword(
+  deviceIndex?: number | null,
+  sensitivities?: number[]
+): Promise<WakeInfo> {
+  return request<WakeInfo>("/api/wakeword/start", {
+    method: "POST",
+    body: JSON.stringify({
+      device_index: deviceIndex ?? null,
+      sensitivities: sensitivities ?? null,
+    }),
+  });
+}
+
+export async function stopWakeword(): Promise<WakeInfo> {
+  return request<WakeInfo>("/api/wakeword/stop", { method: "POST" });
+}
+
+/** 热重读配置（含 AccessKey），改完不用重启后端。 */
+export async function reloadWakeword(): Promise<WakeInfo> {
+  return request<WakeInfo>("/api/wakeword/reload", { method: "POST" });
+}
+
+export async function listWakeDevices(): Promise<{ devices: WakeDevice[] }> {
+  return request<{ devices: WakeDevice[] }>("/api/wakeword/devices");
+}
+
+export async function setWakeSensitivity(
+  sensitivities: number[]
+): Promise<WakeInfo> {
+  return request<WakeInfo>("/api/wakeword/sensitivity", {
+    method: "PUT",
+    body: JSON.stringify({ sensitivities }),
+  });
+}
+
+/** 播报 / 手动录音期间调用：后端继续读音频流，但暂停判定。 */
+export async function suspendWakeword(): Promise<WakeInfo> {
+  return request<WakeInfo>("/api/wakeword/suspend", { method: "POST" });
+}
+
+export async function resumeWakeword(): Promise<WakeInfo> {
+  return request<WakeInfo>("/api/wakeword/resume", { method: "POST" });
+}
+
+export async function listWakeCaptures(): Promise<{ captures: WakeCapture[] }> {
+  return request<{ captures: WakeCapture[] }>("/api/wakeword/captures");
+}
+
+export function wakeCaptureUrl(id: string): string {
+  return `${API_BASE}/api/wakeword/captures/${encodeURIComponent(id)}`;
+}
+
+export async function markWakeCapture(
+  id: string,
+  label: "false_alarm" | "true_wake"
+): Promise<void> {
+  await request(`/api/wakeword/captures/${encodeURIComponent(id)}/mark`, {
+    method: "POST",
+    body: JSON.stringify({ label }),
+  });
+}
+
+/**
+ * 离线回放一段音频看能否命中，**不占用麦克风**。
+ * 打包产物没法对着喊话，验证它是否真的带上了模型文件全靠这条端点。
+ */
+export async function testWakeWav(wav: Blob): Promise<{
+  hit: boolean;
+  keyword?: string;
+  score?: number;
+  best_score?: number;
+}> {
+  const form = new FormData();
+  form.append("file", wav, "sample.wav");
+  const resp = await fetch(`${API_BASE}/api/wakeword/test`, {
+    method: "POST",
+    body: form,
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error(body.detail || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
+/**
+ * 订阅唤醒事件流。
+ *
+ * 复用项目既有的 SSE 帧解析器（见本文件上方 parseSSEFrames），心跳帧（没有
+ * data: 行的注释帧）会被它丢弃，不会污染这里的回调。
+ */
+export async function streamWakeword(
+  signal: AbortSignal,
+  onEvent: (type: string, payload: Record<string, unknown>) => void
+): Promise<void> {
+  const resp = await fetch(`${API_BASE}/api/wakeword/stream`, { signal });
+  if (!resp.ok) {
+    throw new Error(`唤醒事件流不可达：HTTP ${resp.status}`);
+  }
+  const reader = resp.body?.getReader();
+  if (!reader) throw new Error("唤醒事件流没有响应体");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { frames, rest } = parseSSEFrames(buffer);
+      buffer = rest;
+      for (const frame of frames) {
+        if (!frame.data) continue;
+        try {
+          onEvent(frame.event ?? "message", JSON.parse(frame.data));
+        } catch {
+          // 单帧解析失败不该让整条流断掉
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }

@@ -1,0 +1,4 @@
+# 唤醒词的唯一真源：一行一个中文词，改完跑一次
+#   python scripts/dev/build_sherpa_keywords.py
+# 后端启动时检测到本文件比 keywords.txt 新，也会自动重新编译。
+你好贾维斯

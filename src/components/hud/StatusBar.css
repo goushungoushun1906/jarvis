@@ -1,0 +1,143 @@
+/* ==========================================================================
+   StatusBar —— 六态状态指示器
+   状态点脉冲周期 = 动效节律冗余（2000/500/800/300/500step/0ms）。
+   offline 的 0ms = 完全静止，是六态里唯一的静止态，本身就是一条辨识线索。
+   ========================================================================== */
+
+.sb {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* ---- 当前状态 ---- */
+.sb-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--core);
+  flex: 0 0 auto;
+  /* 基线由 JS 内联 animationDuration 覆盖；这里给个默认值 */
+  animation: sbPulse 2000ms var(--e-io) infinite;
+  transition: background-color var(--t-4) var(--e-std);
+}
+.sb-dot--step {
+  animation-timing-function: step-end;
+}
+
+.sb-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.sb-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.sb-en {
+  font-family: var(--font-hud);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sb-zh {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* ---- 六枚胶囊 ---- */
+.sb-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sb-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  /* 功能性控件边界必须用 --stroke-strong（3.06:1）。
+     --stroke 对面板仅 1.47:1，只能画装饰线，禁止作控件边界。 */
+  border: 1px solid var(--stroke-strong);
+  background: var(--panel);
+  color: var(--text-3);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color var(--t-4) var(--e-std), border-color var(--t-4) var(--e-std),
+    background-color var(--t-4) var(--e-std);
+}
+
+.sb-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.sb-pill--on {
+  color: #06080f;
+  background: var(--core);
+  border-color: var(--core);
+  font-weight: 700;
+}
+.sb-pill--on .sb-pill-icon {
+  opacity: 1;
+}
+
+button.sb-pill:hover {
+  border-color: var(--core);
+  color: var(--text-2);
+}
+button.sb-pill--on:hover {
+  color: #06080f;
+}
+
+@keyframes sbPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
+}
+
+/* ---- XS 档：只留点 + 图标 ---- */
+.jhud[data-size="XS"] .sb-zh,
+.jhud[data-size="F"] .sb-zh {
+  display: none;
+}
+.jhud[data-size="F"] .sb-list {
+  display: none;
+}
+
+/* ---- reduce：节律关掉，但保留颜色 / 文字 / 图标 / 形状四重冗余 ---- */
+.jhud[data-motion="off"] .sb-dot {
+  opacity: 1;
+  transform: none;
+}

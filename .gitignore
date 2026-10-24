@@ -68,7 +68,19 @@ Thumbs.db
 
 # === 本地依赖与模型数据 ===
 server/libs/
-server/models/
+# 模型数据整体不入库（动辄几百 MB）。但要留一个例外：
+# models/wakeword/*/keywords.txt 是**唤醒词的唯一真源** —— 开放词表方案下
+# 改一行文本就能换唤醒词，这个文件必须跟着代码版本走，否则换台机器唤醒词就没了。
+#
+# 注意不能简单地保留 `server/models/` 再在下面加 `!`：git 的规则是
+# 「父目录被排除后，其中的文件无法单独重新纳入」。必须先把目录本身放开
+# （只放开目录、不放开文件），再把具体文件挑回来。
+server/models/**
+!server/models/**/
+!server/models/wakeword/sherpa-onnx-kws-*/keywords.txt
+# keywords_raw.txt 是给人类看/改的中文词源（一行一个唤醒词），
+# keywords.txt 是它编译出的拼音 token 产物。两个都要入库，缺了前者换机器就改不了词。
+!server/models/wakeword/sherpa-onnx-kws-*/keywords_raw.txt
 server/data/
 pyaudio_pkg/
 
@@ -90,3 +102,12 @@ NUL
 # === 临时测试文件 ===
 server/test_large.wav
 server/mic_test.wav
+
+# === 本地数据库备份与损坏残留（含私人对话记录，绝不入库）===
+server/_bak_*/
+server/_db_backup_*/
+server/_dbbak-*/
+server/*.db.corrupt
+server/*.db-wal.broken
+server/*.db-shm.broken
+server/tmp_db_dump.sql

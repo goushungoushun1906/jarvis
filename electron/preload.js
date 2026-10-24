@@ -41,4 +41,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   hideSelectionWindow: () => ipcRenderer.send('selection-hide'),
   onSelectionText: (callback) => subscribe('selection-text', callback),
   onSelectionQuery: (callback) => subscribe('selection-query', callback),
+
+  // 语音唤醒兜底快捷键。
+  // 存在的理由：关键词引擎可能因缺少密钥、模型文件缺失或麦克风被占用而
+  // 起不来，此时用户必须还能用键盘开门，否则等于整个语音入口死掉。
+  onWakeToggle: (callback) => subscribe('wake-toggle', callback),
+  onWakePttStart: (callback) => subscribe('wake-ptt-start', callback),
+  onWakePttStop: (callback) => subscribe('wake-ptt-stop', callback),
 });

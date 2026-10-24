@@ -137,6 +137,30 @@ export function useChatStream(
         abortRef.current = new AbortController();
 
         let accumulated = "";
+        // 分句播报：已经排进播报队列的字符数。首句一生成完就开念，
+        // 不用等整段回答（旧行为：整段生成完才合成 → 体感"思考完还要干等"）。
+        let spokenUpTo = 0;
+        const autoSpeak = () => voice.voiceModeRef.current === "auto";
+
+        /** 从 pending 里切出一个可念的整句；没有完整句子就返回 null。 */
+        const takeSentence = (pending: string): string | null => {
+          if (pending.trim().length < 6) return null;
+          // 句末标点优先
+          let cut = -1;
+          for (const ch of ["。", "！", "？", "!", "?", "\n"]) {
+            const i = pending.lastIndexOf(ch);
+            if (i > cut) cut = i;
+          }
+          // 长句迟迟不来句号时，退而在逗号处切一刀，避免一直憋着不念
+          if (cut < 0 && pending.length >= 60) {
+            for (const ch of ["，", ",", "；", ";", "、"]) {
+              const i = pending.lastIndexOf(ch);
+              if (i > cut) cut = i;
+            }
+          }
+          if (cut < 0) return null;
+          return pending.slice(0, cut + 1);
+        };
 
         await streamChat(
           { messages: base, stream: true, conversation_id: convoId },
@@ -150,6 +174,16 @@ export function useChatStream(
               content: stripToolCallJson(accumulated),
               tool_calls: tools.list(),
             });
+
+            if (autoSpeak()) {
+              const pending = stripToolCallJson(accumulated).slice(spokenUpTo);
+              const piece = takeSentence(pending);
+              if (piece) {
+                spokenUpTo += piece.length;
+                // 工具调用的 JSON 不能念出来
+                if (!piece.includes('"tool"')) voice.enqueue(piece);
+              }
+            }
           },
           (err) => {
             onError(err);
@@ -157,8 +191,12 @@ export function useChatStream(
           },
           () => {
             const visible = stripToolCallJson(accumulated);
-            if (voice.voiceModeRef.current === "auto" && visible.trim()) {
-              voice.play(visible).catch(() => setJavisStatus("idle"));
+            if (autoSpeak() && visible.trim()) {
+              // 只补念最后那截没凑成整句的内容，前面已经念过的不再重复
+              const tail = visible.slice(spokenUpTo).trim();
+              if (tail && !tail.includes('"tool"')) {
+                voice.enqueue(tail);
+              }
             } else {
               setJavisStatus("idle");
             }

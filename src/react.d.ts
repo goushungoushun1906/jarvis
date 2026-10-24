@@ -66,5 +66,8 @@ interface Window {
     hideSelectionWindow?: () => void;
     onSelectionText?: (callback: (text: string) => void) => () => void;
     onSelectionQuery?: (callback: (query: string) => void) => () => void;
+    onWakeToggle?: (callback: () => void) => () => void;
+    onWakePttStart?: (callback: () => void) => () => void;
+    onWakePttStop?: (callback: () => void) => () => void;
   };
 }

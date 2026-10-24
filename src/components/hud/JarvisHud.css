@@ -1,0 +1,302 @@
+/* ==========================================================================
+   JarvisHud —— 组合根组件的骨架布局
+   （令牌在 hud-theme.css，这里只放结构。所有 transition 均显式列属性。）
+   ========================================================================== */
+
+.jhud {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+/* ---------------- 顶栏 ---------------- */
+.jhud-top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--stroke);
+  background: linear-gradient(rgba(11, 16, 32, 0.75), rgba(11, 16, 32, 0));
+}
+
+.jhud-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+}
+.jhud-brand-mk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--core);
+  border-radius: 8px;
+  color: var(--core-text);
+}
+.jhud-brand-tx {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.jhud-brand-tx b {
+  font-weight: 700;
+  font-size: 12px;
+}
+.jhud-brand-sub {
+  font-family: var(--font-hud);
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--text-3);
+}
+
+.jhud-top-center {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.jhud-top-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jhud-mic {
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+/* ---------------- 按钮 ---------------- */
+.jhud-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke-strong);
+  background: var(--panel);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1;
+  transition: transform 120ms var(--e-out), border-color 160ms linear, color 160ms linear;
+}
+.jhud-btn:hover:not(:disabled) {
+  transform: scale(1.04);
+  border-color: var(--core);
+  color: var(--text);
+}
+.jhud-btn--stop {
+  border-color: var(--core);
+  color: var(--core-text);
+}
+.jhud-btn--send {
+  background: var(--core);
+  border-color: var(--core);
+  color: #06080f;
+  font-weight: 700;
+}
+.jhud-btn--send:hover:not(:disabled) {
+  color: #06080f;
+}
+
+/* 底部麦克风按钮（点击开始说话 / 再点停止并发送） */
+.jhud-icon-btn {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--stroke-strong);
+  background: var(--panel);
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms var(--e-out), border-color 160ms linear, color 160ms linear;
+}
+.jhud-icon-btn:hover:not(:disabled) {
+  transform: scale(1.06);
+  border-color: var(--core);
+  color: var(--text);
+}
+.jhud-icon-btn.on {
+  border-color: var(--core);
+  color: var(--core-text);
+  background: var(--panel-2);
+}
+
+/* 语音唤醒开关：off / 监听中 / 已唤醒 */
+.jhud-btn--wake {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.jhud-btn--wake.on {
+  border-color: var(--core);
+  color: var(--core-text);
+}
+.jhud-btn--wake.on.armed {
+  background: var(--core);
+  border-color: var(--core);
+  color: #06080f;
+  font-weight: 700;
+}
+
+/* ---------------- 主体 ---------------- */
+.jhud-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 10px 24px;
+  min-height: 0;
+}
+.jhud-body--split {
+  justify-content: space-evenly;
+}
+
+.jhud-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.jhud-wave {
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------------- 会话流 ---------------- */
+.jhud-feed {
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  max-width: 38vw;
+  height: 100%;
+  max-height: 420px;
+  background: var(--panel);
+  border: 1px solid var(--stroke-strong);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.jhud-feed-h {
+  padding: 10px 14px;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--stroke);
+}
+.jhud-feed-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  overflow-y: auto;
+}
+.jhud-feed-empty {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.jhud-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: var(--panel-2);
+  animation: hudMsgIn 240ms var(--e-out) both;
+}
+.jhud-msg--user {
+  align-self: flex-end;
+  border-color: var(--stroke-strong);
+}
+.jhud-msg-who {
+  color: var(--text-3);
+  font-size: 9px;
+}
+.jhud-msg-tx {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---------------- 底部语音条 ---------------- */
+.jhud-dock {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px 18px;
+  border-top: 1px solid var(--stroke);
+  background: linear-gradient(rgba(11, 16, 32, 0), rgba(11, 16, 32, 0.75));
+}
+.jhud-input {
+  flex: 1;
+  height: 38px;
+  min-width: 0;
+  padding: 0 12px;
+  border-radius: 10px;
+  /* 功能性控件边界必须用 --stroke-strong（3.06:1），不能用 --stroke（1.47:1） */
+  border: 1px solid var(--stroke-strong);
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  transition: border-color var(--t-2) var(--e-std);
+}
+.jhud-input::placeholder {
+  color: var(--text-3);
+}
+.jhud-input:focus {
+  border-color: var(--core);
+  outline: none;
+}
+.jhud-input:focus-visible {
+  outline: 2px solid var(--core);
+  outline-offset: 2px;
+}
+
+@keyframes hudMsgIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------- 响应式 ---------------- */
+@media (max-width: 1080px) {
+  .jhud-feed {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  .jhud-brand-sub,
+  .jhud-mic {
+    display: none;
+  }
+  .jhud-top {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+}
+@media (max-height: 640px) {
+  .jhud-wave {
+    display: none;
+  }
+}

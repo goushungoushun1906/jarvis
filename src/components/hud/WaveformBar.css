@@ -1,0 +1,17 @@
+/* ==========================================================================
+   WaveformBar —— 频谱条容器
+   纯装饰：aria-hidden，不参与焦点顺序，不抢占层级。
+   ========================================================================== */
+
+.wf {
+  position: relative;
+  display: block;
+  pointer-events: none;
+}
+
+.wf-canvas {
+  display: block;
+  width: 100%;
+  opacity: 0.95;
+  transition: opacity var(--t-4) var(--e-std);
+}

@@ -33,6 +33,10 @@ const MAX_BACKEND_RESTARTS = 3;
 const BACKEND_PORT = 18200;
 const FLOATING_SHORTCUT = 'Ctrl+Shift+Space';
 const SELECTION_SHORTCUT = 'Ctrl+Shift+C';
+// 语音唤醒兜底快捷键。存在的理由：关键词引擎可能因缺密钥、模型没打包进去
+// 或麦克风被占用而起不来，那种情况下用户必须还能用键盘开门。
+const WAKE_TOGGLE_SHORTCUT = 'Ctrl+Alt+J';
+const WAKE_PTT_SHORTCUT = 'Ctrl+Alt+K';
 
 // Clipboard polling for text selection assistant
 let lastClipboardText = '';
@@ -781,7 +785,34 @@ ipcMain.on('selection-hide', () => {
   hideSelectionWindow();
 });
 
+// ====== 单实例 ======
+// 关掉窗口只是缩到托盘，进程并不会退出。以前每次双击启动器都会再开一个
+// 实例，桌面上可能同时挂着新旧两个窗口，用户盯着的是旧的那个 —— 这就是
+// "改了很多版却一点变化都没有"的另一种成因。现在第二个实例直接退出，并让
+// 已经在跑的那个重新加载前端再弹到前台。
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
+app.on('second-instance', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  // 重新加载，保证拉到的是最新前端，而不是内存里那份旧的
+  mainWindow.reload();
+});
+
 app.whenReady().then(async () => {
+  if (!gotSingleInstanceLock) {
+    app.quit();
+    return;
+  }
+
   // 必须在任何后端/前端请求之前装上，否则首批请求会 401。
   attachApiTokenToRequests();
 
@@ -807,6 +838,28 @@ app.whenReady().then(async () => {
   });
   if (!selectionRegistered) {
     console.warn(`Failed to register global shortcut: ${SELECTION_SHORTCUT}`);
+  }
+
+  // Ctrl+Alt+J：开关语音唤醒监听
+  const wakeToggleRegistered = globalShortcut.register(WAKE_TOGGLE_SHORTCUT, () => {
+    if (mainWindow) mainWindow.webContents.send('wake-toggle');
+  });
+  if (!wakeToggleRegistered) {
+    console.warn(`Failed to register global shortcut: ${WAKE_TOGGLE_SHORTCUT}`);
+  }
+
+  // Ctrl+Alt+K：手动开麦（再按一次停止）。
+  // globalShortcut 只在按键**按下**时回调、拿不到释放事件，所以这里做成
+  // 开关式而不是"按住说话" —— 想停止就再按一次。
+  let pttActive = false;
+  const wakePttRegistered = globalShortcut.register(WAKE_PTT_SHORTCUT, () => {
+    pttActive = !pttActive;
+    if (mainWindow) {
+      mainWindow.webContents.send(pttActive ? 'wake-ptt-start' : 'wake-ptt-stop');
+    }
+  });
+  if (!wakePttRegistered) {
+    console.warn(`Failed to register global shortcut: ${WAKE_PTT_SHORTCUT}`);
   }
 
   // Start clipboard polling to capture copied text

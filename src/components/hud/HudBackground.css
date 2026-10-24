@@ -1,0 +1,106 @@
+/* ==========================================================================
+   HudBackground —— 很淡的背景装饰层
+   ========================================================================== */
+
+.hb {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---- 网格：48px，极低透明度，只做"仪器感"底噪 ---- */
+.hb-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(120, 150, 210, 0.55) 0 1px, rgba(0, 0, 0, 0) 1px 48px),
+    repeating-linear-gradient(90deg, rgba(120, 150, 210, 0.55) 0 1px, rgba(0, 0, 0, 0) 1px 48px);
+  transition: opacity var(--t-4) var(--e-std);
+}
+
+/* ---- 四角暗角，把视线收拢到中央核心 ---- */
+.hb-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    rgba(0, 0, 0, 0) 30%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+  opacity: 0.8;
+}
+
+/* ---- 扫描线：只动 transform（合成），不动画 background-position ---- */
+.hb-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 180px;
+  opacity: 0.1;
+  background: linear-gradient(
+    rgba(0, 0, 0, 0) 0%,
+    rgba(160, 200, 255, 0.35) 48%,
+    rgba(160, 200, 255, 0.5) 50%,
+    rgba(160, 200, 255, 0.35) 52%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  animation: hbScan 9000ms var(--e-lin) infinite;
+  will-change: transform;
+  transition: opacity var(--t-4) var(--e-std);
+}
+
+/* ---- 四角括号：功能性装饰，用 --stroke-strong 才看得见 ---- */
+.hb-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  opacity: 0.55;
+  transition: border-color var(--t-4) var(--e-std), opacity var(--t-4) var(--e-std);
+}
+.hb-corner--tl {
+  top: 14px;
+  left: 14px;
+  border-top: 1px solid var(--stroke-strong);
+  border-left: 1px solid var(--stroke-strong);
+}
+.hb-corner--tr {
+  top: 14px;
+  right: 14px;
+  border-top: 1px solid var(--stroke-strong);
+  border-right: 1px solid var(--stroke-strong);
+}
+.hb-corner--bl {
+  bottom: 14px;
+  left: 14px;
+  border-bottom: 1px solid var(--stroke-strong);
+  border-left: 1px solid var(--stroke-strong);
+}
+.hb-corner--br {
+  bottom: 14px;
+  right: 14px;
+  border-bottom: 1px solid var(--stroke-strong);
+  border-right: 1px solid var(--stroke-strong);
+}
+
+/* offline：装饰层整体压暗，配合核心去饱和 */
+.jhud[data-status="offline"] .hb-grid,
+.jhud[data-status="offline"] .hb-scan {
+  opacity: 0.02;
+}
+
+@keyframes hbScan {
+  from {
+    transform: translateY(-200px);
+  }
+  to {
+    transform: translateY(100vh);
+  }
+}
+
+.jhud[data-motion="off"] .hb-scan {
+  transform: translateY(30vh);
+}

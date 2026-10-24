@@ -86,6 +86,45 @@ def _default_whisper_dir() -> str | None:
     return _find_model_dir("whisper-tiny")
 
 
+def _default_paraformer_dir() -> str | None:
+    """定位 sherpa-onnx 的中文 Paraformer 模型目录。
+
+    显式指定（JARVIS_ASR_MODEL_DIR）优先；否则在 models/asr/ 下找第一个
+    同时含模型本体与词表的目录。目录名带日期版本号，写死必然踩空，所以
+    是"扫目录 + 验内容"而不是拼路径。
+    """
+    forced = os.environ.get("JARVIS_ASR_MODEL_DIR")
+    if forced and os.path.isdir(forced):
+        return forced
+
+    import glob as _glob
+
+    for root in _candidate_model_roots():
+        for candidate in sorted(_glob.glob(os.path.join(root, "asr", "*"))):
+            if not os.path.isdir(candidate):
+                continue
+            if _glob.glob(os.path.join(candidate, "tokens.txt")) and (
+                _glob.glob(os.path.join(candidate, "*.int8.onnx"))
+                or _glob.glob(os.path.join(candidate, "*.onnx"))
+            ):
+                return candidate
+    return None
+
+
+def _paraformer_files(model_dir: str) -> tuple[str, str] | None:
+    """返回 (模型文件, 词表)；int8 优先。"""
+    import glob as _glob
+
+    tokens = os.path.join(model_dir, "tokens.txt")
+    if not os.path.isfile(tokens):
+        return None
+    for pattern in ("model.int8.onnx", "*.int8.onnx", "model.onnx", "*.onnx"):
+        hits = _glob.glob(os.path.join(model_dir, pattern))
+        if hits:
+            return hits[0], tokens
+    return None
+
+
 # ─── faster-whisper (preferred) ─────────────────────────────────────────
 _whisper_model = None
 _whisper_lock = threading.Lock()
@@ -94,11 +133,69 @@ _WHISPER_MODEL_DIR = _default_whisper_dir() or ""
 _WHISPER_LOADED = False
 _WHISPER_AVAILABLE = False  # set True if import succeeds
 
+# ─── sherpa-onnx Paraformer（中文首选）─────────────────────────────────
+#
+# 换它的原因很实在：Vosk 的 vosk-model-small-cn 是老一代 Kaldi 模型，实测把
+# 「你好贾维斯」识别成「你好 假 微丝」，长句更糟。Paraformer 是新一代非自
+# 回归中文模型，准确率高一档，int8 在 CPU 上也更快。而且 sherpa-onnx 已经
+# 作为唤醒引擎装好了，接 ASR 不再引入新的运行时依赖。
+_paraformer = None
+_paraformer_lock = threading.Lock()
+_PARAFORMER_LOADED = False
+
 # ─── Vosk (fallback) ──────────────────────────────────────────────────
 _MODEL_PATH = _default_vosk_dir() or ""
 
 _vosk_model = None
 _vosk_lock = threading.Lock()
+
+
+def _load_paraformer():
+    """懒加载 Paraformer 识别器；没有模型就安静返回 None。"""
+    global _paraformer, _PARAFORMER_LOADED
+
+    if _PARAFORMER_LOADED:
+        return _paraformer
+
+    with _paraformer_lock:
+        if _PARAFORMER_LOADED:
+            return _paraformer
+        _PARAFORMER_LOADED = True
+
+        model_dir = _default_paraformer_dir()
+        if not model_dir:
+            logger.info(
+                "未找到 Paraformer 模型（models/asr/ 下为空），回落其他引擎；"
+                "可用 scripts/dev/download_paraformer_asr.py 下载"
+            )
+            return None
+        files = _paraformer_files(model_dir)
+        if not files:
+            logger.warning("Paraformer 模型目录不完整：%s", model_dir)
+            return None
+        model_file, tokens = files
+
+        try:
+            # 必须在 import sherpa_onnx 之前注册 DLL 搜索目录，否则
+            # Windows 可能命中系统里那份游离的 onnxruntime（1.17.1）。
+            from . import sherpa_runtime  # noqa: F401
+            import sherpa_onnx
+
+            recognizer = sherpa_onnx.OfflineRecognizer.from_paraformer(
+                paraformer=model_file,
+                tokens=tokens,
+                num_threads=2,
+                sample_rate=16000,
+                feature_dim=80,
+                decoding_method="greedy_search",
+                provider="cpu",
+            )
+            _paraformer = recognizer
+            logger.info("Paraformer 已加载：%s", model_file)
+            return _paraformer
+        except Exception as e:
+            logger.error("Paraformer 加载失败：%s", e)
+            return None
 
 
 def _load_whisper_model():
@@ -182,6 +279,8 @@ def is_model_available() -> bool:
     HuggingFace 现场下载模型，在无网/打包环境里会把语音链路卡到超时。只有
     本地模型目录真的存在才算数。
     """
+    if _default_paraformer_dir():
+        return True
     if _default_vosk_dir():
         return True
     if _default_whisper_dir():
@@ -197,8 +296,11 @@ def model_status() -> dict:
     """供 /api/voice/stt-status 与排查使用的模型可见性信息。"""
     vosk_dir = _default_vosk_dir()
     whisper_dir = _default_whisper_dir()
+    paraformer_dir = _default_paraformer_dir()
     return {
         "available": is_model_available(),
+        "engine": "paraformer" if paraformer_dir else ("vosk" if vosk_dir else None),
+        "paraformer_model": paraformer_dir,
         "vosk_model": vosk_dir,
         "whisper_model": whisper_dir,
         "search_roots": _candidate_model_roots(),
@@ -272,80 +374,54 @@ def _transcribe_vosk(pcm_data: bytes, sample_rate: int) -> str | None:
         return None
 
 
-def _hotword_fixes() -> dict[str, str]:
-    """常见误识 -> 正确写法。
+def _resample(samples: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
+    """把样本线性重采样到目标采样率。
 
-    small 模型（66MB）对音译专有名词识别很差：实测"贾维斯"被稳定识别成
-    "假 为 为师"。2GB 大模型能识别对，但那要 25s，完全不适合语音交互。
-    折中做法是保留小模型的速度，再用这张小表把明显错的产品名改回来。
-
-    可用 JARVIS_STT_HOTWORDS 追加（格式：误识=正确,误识2=正确2）。
+    Paraformer 只在 16kHz 上训练，喂别的采样率不会报错，只会输出一堆错字——
+    属于"静默降级"，必须在这里显式处理掉。用线性插值而不是引入新依赖：
+    语音频段内够用，且本机没有 scipy。
     """
-    fixes = {
-        "假为为师": "贾维斯",
-        "假为师": "贾维斯",
-        "假维斯": "贾维斯",
-        "加维斯": "贾维斯",
-        "甲维斯": "贾维斯",
-        "贾维寺": "贾维斯",
-    }
-    extra = os.environ.get("JARVIS_STT_HOTWORDS", "")
-    for pair in extra.split(","):
-        pair = pair.strip()
-        if "=" in pair:
-            wrong, right = pair.split("=", 1)
-            if wrong.strip() and right.strip():
-                fixes[wrong.strip()] = right.strip()
-    return fixes
+    if src_rate == dst_rate or len(samples) == 0:
+        return samples
+    n_out = max(1, int(round(len(samples) * dst_rate / src_rate)))
+    src_idx = np.arange(len(samples), dtype=np.float32)
+    dst_idx = np.linspace(0.0, float(len(samples) - 1), n_out, dtype=np.float32)
+    return np.interp(dst_idx, src_idx, samples).astype(np.float32)
 
 
-def _apply_hotword_fixes(text: str) -> str:
-    """把误识的专有名词改回正确写法。
+def _transcribe_paraformer(pcm_data: bytes, sample_rate: int) -> str | None:
+    """用 sherpa-onnx Paraformer 转写。没有模型时返回 None 让上层回落。"""
+    recognizer = _load_paraformer()
+    if recognizer is None:
+        return None
 
-    Vosk 输出带空格（"假 为 为师"），因此按"无空格串"比对，但替换发生在
-    原文对应区间上 —— 这样只改动命中的那一段，其余文本和空格原样保留。
-    不能直接返回去空格的串：中文模型也会识别英文，无条件去空格会把
-    "hello world" 拼成 "helloworld"。
-    """
-    if not text:
-        return text
+    try:
+        samples = (
+            np.frombuffer(pcm_data, dtype="<i2").astype(np.float32) / 32768.0
+        )
+        if sample_rate != 16000:
+            samples = _resample(samples, sample_rate, 16000)
 
-    # 无空格串 <-> 原文位置的映射
-    compact_chars: list[str] = []
-    orig_pos: list[int] = []
-    for i, ch in enumerate(text):
-        if ch == " ":
-            continue
-        compact_chars.append(ch)
-        orig_pos.append(i)
-    compact = "".join(compact_chars)
-    if not compact:
-        return text
-
-    replacements: list[tuple[int, int, str]] = []
-    for wrong, right in _hotword_fixes().items():
-        start = 0
-        while True:
-            idx = compact.find(wrong, start)
-            if idx < 0:
-                break
-            orig_start = orig_pos[idx]
-            orig_end = orig_pos[idx + len(wrong) - 1] + 1
-            replacements.append((orig_start, orig_end, right))
-            start = idx + len(wrong)
-
-    # 从后往前替换，避免前面的改动打乱后面的区间
-    for orig_start, orig_end, right in sorted(replacements, reverse=True):
-        text = text[:orig_start] + right + text[orig_end:]
-    return text
+        stream = recognizer.create_stream()
+        stream.accept_waveform(16000, samples)
+        recognizer.decode_stream(stream)
+        text = (stream.result.text or "").strip()
+        # Paraformer 的词表里带空格分词，中文不需要，去掉更自然
+        text = text.replace(" ", "")
+        logger.info("STT (Paraformer): '%s'", text)
+        return text or None
+    except Exception as e:
+        logger.error("Paraformer error: %s", e)
+        return None
 
 
 def transcribe_wav(wav_bytes: bytes) -> str:
     """Transcribe WAV audio to text.
 
     Strategy:
-      1. faster-whisper (best accuracy)
-      2. Vosk (fallback, lighter)
+      1. sherpa-onnx Paraformer — 中文准确率最高（新一代非自回归模型）
+      2. faster-whisper (best accuracy for mixed language)
+      3. Vosk (fallback, lighter)
 
     Args:
         wav_bytes: WAV format audio (16-bit signed, mono, 16kHz preferred)
@@ -391,14 +467,19 @@ def transcribe_wav(wav_bytes: bytes) -> str:
             *(max(-32768, min(32767, int(s * scale))) for s in samples)
         )
 
-    # Strategy 1: faster-whisper
+    # Strategy 1: Paraformer（中文首选）
+    result = _transcribe_paraformer(pcm_data, sample_rate)
+    if result:
+        return result
+
+    # Strategy 2: faster-whisper
     result = _transcribe_whisper(pcm_data, sample_rate)
     if result:
-        return _apply_hotword_fixes(result)
+        return result
 
-    # Strategy 2: Vosk fallback
+    # Strategy 3: Vosk fallback
     result = _transcribe_vosk(pcm_data, sample_rate)
     if result:
-        return _apply_hotword_fixes(result)
+        return result
 
     return ""

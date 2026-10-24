@@ -232,7 +232,15 @@ export interface HealthResponse {
 
 // ====== App State ======
 export type ConnectionStatus = "checking" | "online" | "offline";
-export type JavisStatus = "idle" | "thinking" | "speaking" | "error";
+export type JavisStatus =
+  | "idle"
+  | "listening"
+  | "thinking"
+  | "speaking"
+  | "error"
+  // C 方案「双态融合」六态补齐：离线。与 ConnectionStatus 是两个独立概念——
+  // ConnectionStatus 驱动顶栏连接指示灯，JavisStatus.offline 驱动中央核心与 HUD。
+  | "offline";
 export type ToneOption = "professional" | "casual" | "humorous" | "formal";
 
 // ====== Voice ======

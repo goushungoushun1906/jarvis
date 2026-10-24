@@ -1,0 +1,323 @@
+/* ==========================================================================
+   JARVIS HUD · C 方案「双态融合」· 设计令牌（唯一真源）
+   --------------------------------------------------------------------------
+   规则（改这个文件前先读）：
+   1. 令牌一律挂在 `.jhud` 上，**绝不上全局 :root**。
+      项目现有「豆包浅色风」主题用的是 :root 上的 --bg-primary / --text-primary
+      等变量，若在此污染 :root 会直接把正在用的浅色 UI 改坏。
+   2. 底色 / 面板 / 正文 **恒定不变**，任何状态都不许改。
+      只有 --core / --core-text 随状态走。满屏变色 = 方案作废。
+   3. --core 本身不做 transition；由具体属性（stroke / color / fill /
+      background-color）各自过渡 420ms，见下方 §2。
+   4. 禁止 transition: all。所有 transition 必须显式列出属性。
+   ========================================================================== */
+
+/* ============================ §1 令牌 ============================ */
+.jhud {
+  /* --- 恒定层（任何状态都不许变） --- */
+  --bg: #06080f;                 /* 底 */
+  --panel: #0b1020;              /* 面板 */
+  --panel-2: #101731;            /* 面板凸起/输入区 */
+  --stroke: #24314f;             /* 装饰性分隔线 / 网格。对 --panel 仅 1.47:1 → 禁止作控件边界 */
+  --stroke-strong: #4e6088;      /* 功能性控件边界。对 --panel 3.06:1 ✅ WCAG 1.4.11 */
+  --text: #e5ecff;               /* 正文 15.7:1 ✅ AAA */
+  --text-2: #aebbd9;             /* 次要 9.4:1 ✅ AAA */
+  --text-3: #7c8aae;             /* HUD 三级 5.1:1 ✅ AA，仅用于 ≥12px 且非关键信息 */
+
+  /* --- 状态驱动层（唯一变量） --- */
+  --core: #35e0ff;
+  --core-text: #35e0ff;
+  /* 「双态融合」的紫半边：恒定。它是品牌识别的一部分，不随状态变，
+     否则 speaking(金) 时会变成金+紫的第三色，破坏「只有核心随状态走」。 */
+  --core-2: #a78bfa;
+
+  /* --- 辉光（预烘焙图层，禁止动画 filter / box-shadow 参数） --- */
+  --glow-inner: radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 62%);
+  --glow-outer: radial-gradient(circle, var(--core) 0%, rgba(0, 0, 0, 0) 70%);
+  /* error 噪点底图：静态 conic-gradient，只动画 rotate / opacity */
+  --noise-img: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 107, 129, 0.5) 0deg 1.5deg,
+    rgba(0, 0, 0, 0) 1.5deg 6deg
+  );
+
+  /* --- 时长 --- */
+  --t-1: 80ms;
+  --t-2: 160ms;
+  --t-3: 240ms;
+  --t-4: 420ms;
+  --t-5: 720ms;
+  --t-6: 4000ms;
+
+  /* --- 缓动 --- */
+  --e-std: cubic-bezier(0.4, 0, 0.2, 1);      /* 状态/颜色/通用 */
+  --e-out: cubic-bezier(0.22, 1, 0.36, 1);    /* 入场/展开 */
+  --e-in: cubic-bezier(0.4, 0, 1, 1);         /* 退场/收起 */
+  --e-io: cubic-bezier(0.37, 0, 0.63, 1);     /* 循环呼吸/脉冲 */
+  --e-snap: cubic-bezier(0.34, 1.56, 0.64, 1);/* 打断回弹 overshoot */
+  --e-lin: linear;                            /* 旋转/扫描/倒计时 */
+
+  /* --- 字体 --- */
+  --font-hud: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, SFMono-Regular, monospace;
+  --font-ui: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+
+  /* 呼吸周期基线，由 [data-status] 覆盖 */
+  --breath-dur: 4000ms;
+}
+
+/* ============================ §2 六态映射 ============================ */
+/* 只写 data 属性，颜色由 CSS 自己算。React 每次迁移只重渲染 1 次。 */
+.jhud[data-status="idle"] {
+  --core: #35e0ff;
+  --core-text: #35e0ff;
+  --breath-dur: 4000ms;
+}
+.jhud[data-status="listening"] {
+  --core: #9beeff;
+  --core-text: #9beeff;
+  --breath-dur: 1800ms;
+}
+.jhud[data-status="thinking"] {
+  --core: #a78bfa;
+  --core-text: #a78bfa;
+  --breath-dur: 1200ms;
+}
+.jhud[data-status="speaking"] {
+  --core: #ffc861;
+  --core-text: #ffc861;
+  --breath-dur: 600ms;
+}
+.jhud[data-status="error"] {
+  --core: #ff6b81;
+  --core-text: #ff6b81;
+  --breath-dur: 1200ms;
+}
+.jhud[data-status="offline"] {
+  --core: #64748b;
+  /* ⚠️ 硬约束：#64748B 对 #06080F 仅 4.12:1，不达 AA。
+     offline 态的图形用 #64748B，文字/图标一律用提亮后的 #94A3B8（7.72:1）。 */
+  --core-text: #94a3b8;
+  --breath-dur: 0ms;
+}
+
+/* ============================ §3 状态色过渡 ============================ */
+/* ✅ 正确写法：--core 瞬变，具体属性各自插值 420ms。
+   ❌ 禁止 * { transition: all }——一次迁移会触发 200+ 元素重算。 */
+.jhud .hud-color-stroke,
+.jhud .ec-ring,
+.jhud .ec-arc,
+.jhud .ec-inner-ring,
+.jhud .ec-ripple {
+  stroke: var(--core);
+  transition: stroke var(--t-4) var(--e-std);
+}
+.jhud .hud-color-text {
+  color: var(--core-text);
+  transition: color var(--t-4) var(--e-std);
+}
+.jhud .hud-color-fill {
+  fill: var(--core);
+  transition: fill var(--t-4) var(--e-std);
+}
+.jhud .hud-color-bg {
+  background-color: var(--core);
+  transition: background-color var(--t-4) var(--e-std);
+}
+.jhud .hud-color-border {
+  border-color: var(--core);
+  transition: border-color var(--t-4) var(--e-std), color var(--t-4) var(--e-std);
+}
+/* 弧段 b 走恒定的紫半边，不参与状态过渡 */
+.jhud .ec-arc--b {
+  stroke: var(--core-2);
+}
+
+/* ============================ §4 根容器 ============================ */
+.jhud {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  /* 独立成层 + 隔离：HUD 内部的 style 变化不外溢到宿主应用 */
+  contain: layout paint style;
+  isolation: isolate;
+}
+
+/* 覆盖整个窗口的开关模式（App 里 opt-in 挂载） */
+.jhud--overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+}
+
+/* ============================ §5 共用排版 ============================ */
+.jhud .hud-label {
+  font-family: var(--font-hud);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--core-text);
+  transition: color var(--t-4) var(--e-std);
+}
+
+.jhud .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+}
+
+/* 键盘焦点环：#35E0FF 对 #0B1020 = 11.95:1 ✅ */
+.jhud :focus-visible {
+  outline: 2px solid var(--core);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.jhud button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.jhud button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.jhud ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.jhud ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.jhud ::-webkit-scrollbar-thumb {
+  background: var(--stroke);
+  border-radius: 3px;
+}
+
+/* ============================ §6 降级档位 ============================ */
+/* data-tier 由 useJarvisMotion 直接写 dataset（不 setState） */
+.jhud[data-tier="C"] .ec-particles,
+.jhud[data-tier="D"] .ec-particles {
+  opacity: 0;
+}
+.jhud[data-tier="D"] .wf-canvas {
+  opacity: 0;
+}
+.jhud[data-tier="C"] .hb-scan,
+.jhud[data-tier="D"] .hb-scan,
+.jhud[data-tier="C"] .hb-grid,
+.jhud[data-tier="D"] .hb-grid {
+  opacity: 0;
+}
+
+/* ============================ §7 无障碍降级 ============================ */
+/* reduce ≠ 无动画：状态必须仍可辨识，靠 颜色/文字/图标/形状 四重冗余。 */
+
+/* JS 兜底：useJarvisMotion 会把 data-motion 写成 "off" */
+.jhud[data-motion="off"] .ec-shake,
+.jhud[data-motion="off"] .ec-bounce,
+.jhud[data-motion="off"] .ec-spinner,
+.jhud[data-motion="off"] .ec-noise,
+.jhud[data-motion="off"] .hb-scan,
+.jhud[data-motion="off"] .sb-dot,
+.jhud[data-motion="off"] .ec-grip {
+  animation: none !important;
+}
+.jhud[data-motion="off"] .ec-particles {
+  opacity: 0;
+}
+/* 保留明度差与状态色：核心不透明度固定 */
+.jhud[data-motion="off"] .ec-glow {
+  opacity: 0.62 !important;
+}
+.jhud[data-motion="off"] .ec-noise {
+  opacity: 0.18;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jhud .ec-shake,
+  .jhud .ec-bounce,
+  .jhud .ec-spinner,
+  .jhud .hb-scan,
+  .jhud .sb-dot,
+  .jhud .ec-grip {
+    animation: none !important;
+  }
+  .jhud .ec-particles {
+    opacity: 0;
+  }
+  /* 打断/错误等反馈动效保留，但幅度压到 ≤1.02、时长压到 120ms */
+  .jhud .ec-bounce {
+    animation: ecBounceSoft 120ms var(--e-snap) 1 both !important;
+  }
+}
+
+/* Windows 高对比度模式 */
+@media (forced-colors: active) {
+  .jhud {
+    background: Canvas;
+    color: CanvasText;
+  }
+  .jhud .ec-particles,
+  .jhud .wf-canvas,
+  .jhud .ec-glow,
+  .jhud .ec-noise {
+    display: none;
+  }
+  .jhud .ec-ring,
+  .jhud .ec-arc,
+  .jhud .ec-inner-ring {
+    stroke: CanvasText;
+  }
+  .jhud .hud-color-text {
+    color: CanvasText;
+  }
+}
+
+/* ============================ §8 进入 HUD 的入口按钮 ============================ */
+/* 挂在浅色 UI 之上，因此不依赖 .jhud 作用域，自带完整样式 */
+.jhud-toggle {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 8900;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(78, 96, 136, 0.9);
+  background: rgba(11, 16, 32, 0.92);
+  color: #35e0ff;
+  font-family: "JetBrains Mono", Consolas, ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1), border-color 160ms linear;
+}
+.jhud-toggle:hover {
+  transform: scale(1.05);
+  border-color: #35e0ff;
+}
+.jhud-toggle:focus-visible {
+  outline: 2px solid #35e0ff;
+  outline-offset: 2px;
+}

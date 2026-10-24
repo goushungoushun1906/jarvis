@@ -77,7 +77,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px 40px;
+  padding: 36px 20px 40px;
   text-align: center;
 }
 
@@ -97,6 +97,100 @@
   font-size: 28px;
   font-weight: 700;
   color: #fff;
+}
+
+.empty-state .particle-avatar {
+  margin-bottom: 8px;
+}
+
+/* ====== 语音唤醒 ====== */
+.wake-btn.active {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.wake-btn.active.armed {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.12);
+  animation: wakePulse 1s ease-in-out infinite;
+}
+
+@keyframes wakePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(5, 150, 105, 0); }
+}
+
+.wake-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 16px 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  font-size: 12px;
+  color: #1d4ed8;
+}
+
+.wake-bar.armed {
+  background: rgba(5, 150, 105, 0.1);
+  border-color: rgba(5, 150, 105, 0.3);
+  color: #047857;
+}
+
+.wake-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  animation: wakeBlink 1.2s ease-in-out infinite;
+}
+
+@keyframes wakeBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.wake-bar.has-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #b91c1c;
+}
+
+[data-theme="dark"] .wake-bar.has-error {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+}
+
+.wake-heard {
+  margin-left: auto;
+  opacity: 0.65;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .wake-bar {
+  background: rgba(59, 130, 246, 0.14);
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .wake-bar.armed {
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .wake-btn.active {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.18);
+}
+
+[data-theme="dark"] .wake-btn.active.armed {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.18);
 }
 
 .empty-tagline {

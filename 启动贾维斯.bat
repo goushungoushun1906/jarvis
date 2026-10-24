@@ -1,19 +1,24 @@
 @echo off
 setlocal EnableDelayedExpansion
 chcp 936 >nul 2>&1
-title JARVIS Æô¶¯Æ÷
+title JARVIS ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 cd /d "%~dp0"
 
 rem ============================================================
-rem  J.A.R.V.I.S. Î¨Ò»Æô¶¯Èë¿Ú
+rem  J.A.R.V.I.S. Í³Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 rem ------------------------------------------------------------
-rem  Ë«»÷¼´¿É£¬µÈ¼ÛÄ¬ÈÏÆô¶¯¡£¿ÉÑ¡²ÎÊý£º
-rem    Æô¶¯¼ÖÎ¬Ë¹.bat                Æô¶¯ºó¶Ë + Ç°¶Ë + ×ÀÃæ¶Ë
-rem    Æô¶¯¼ÖÎ¬Ë¹.bat --no-electron  Ö»Æô¶¯ºó¶Ë + Ç°¶Ë£¨ä¯ÀÀÆ÷·ÃÎÊ£©
-rem    Æô¶¯¼ÖÎ¬Ë¹.bat --help         ²é¿´°ïÖú
+rem  Ë«ï¿½ï¿½ï¿½ï¿½ï¿½É£ï¿½ï¿½ï¿½ï¿½ + Ç°ï¿½ï¿½ + ï¿½ï¿½ï¿½ï¿½ï¿½
+rem    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬Ë¹.bat                ï¿½ï¿½ï¿½ + Ç°ï¿½ï¿½ + ï¿½ï¿½ï¿½ï¿½ï¿½
+rem    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬Ë¹.bat --no-electron  Ö»ï¿½ï¿½ï¿½ï¿½ + Ç°ï¿½Ë£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+rem    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬Ë¹.bat --help         ï¿½é¿´ï¿½ï¿½ï¿½ï¿½
 rem
-rem  Í£Ö¹ÇëÔËÐÐÍ¬Ä¿Â¼£ºÍ£Ö¹¼ÖÎ¬Ë¹.bat
-rem  ÈÕÖ¾£ºserver\backend.log   frontend.log
+rem  ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ö²ï¿½ï¿½ï¿½ï¿½ï¿½Electron ï¿½Øµï¿½ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¡ï¿½ï¿½ï¿½Ëºï¿½
+rem  Ç°ï¿½Ë¶ï¿½ï¿½ï¿½ï¿½Úºï¿½Ì¨ï¿½Ü¡ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½Ë¿Ú±ï¿½Õ¼ï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+rem  ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â´ï¿½ï¿½ë¡¢ï¿½ï¿½ï¿½ï¿½Í½Ó¿ï¿½È´ï¿½ï¿½ï¿½Ç¾Éµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½
+rem  ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÂµÄ¡ï¿½
+rem
+rem  Í£Ö¹ï¿½ï¿½Í¬Ä¿Â¼ï¿½ï¿½ Í£Ö¹ï¿½ï¿½Î¬Ë¹.bat
+rem  ï¿½ï¿½Ö¾ï¿½ï¿½server\backend.log   frontend.log
 rem ============================================================
 
 set "PROJECT_DIR=%~dp0"
@@ -22,6 +27,11 @@ set "BACKEND_PORT=18200"
 set "FRONTEND_PORT=5173"
 set "START_ELECTRON=1"
 
+rem è®© Python ç”¨ UTF-8 è¾“å‡ºã€‚ä¸­æ–‡ Windows é»˜è®¤ GBKï¼Œè€Œéº¦å…‹é£Žè®¾å¤‡åé‡Œå¸¦ Â®
+rem ï¼ˆ"è‹±ç‰¹å°”Â® æ™ºéŸ³"ï¼‰ï¼Œå†™æ—¥å¿—æ—¶ä¼šæŠ› UnicodeEncodeErrorï¼Œæ•´æ¡æ—¥å¿—ç›´æŽ¥ä¸¢å¤±ã€‚
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
+
 if /i "%~1"=="--no-electron" set "START_ELECTRON=0"
 if /i "%~1"=="--services-only" set "START_ELECTRON=0"
 if /i "%~1"=="--help" goto :usage
@@ -29,70 +39,67 @@ if /i "%~1"=="-h" goto :usage
 
 echo.
 echo ============================================================
-echo    J.A.R.V.I.S.  Æô¶¯Æ÷
+echo    J.A.R.V.I.S.  ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 echo ============================================================
 echo.
 
-rem ---------- 1. ºó¶Ë£¨FastAPI / uvicorn£©----------
-call :port_in_use %BACKEND_PORT%
+rem ---------- 0. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ö²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ----------
+echo [0/3] ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ö²ï¿½ï¿½ï¿½ ...
+taskkill /F /IM electron.exe >nul 2>&1
+call :kill_port %BACKEND_PORT% ï¿½ï¿½ï¿½
+call :kill_port %FRONTEND_PORT% Ç°ï¿½ï¿½
+rem ï¿½ï¿½ï¿½Úºï¿½Ò»ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·Å¶Ë¿Ú£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½×²ï¿½Ï¶Ë¿ï¿½Õ¼ï¿½ï¿½
+ping -n 3 127.0.0.1 >nul 2>&1
+echo.
+
+rem ---------- 1. ï¿½ï¿½Ë£ï¿½FastAPI / uvicorn ----------
+echo [1/3] ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ http://127.0.0.1:%BACKEND_PORT% ...
+rem ï¿½ï¿½ï¿½ï¿½Ä¿ venv ï¿½Ä½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ electron ï¿½Ãµï¿½Ò²ï¿½ï¿½Í¬Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+rem `python` ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½È±ï¿½ï¿½ï¿½ï¿½ï¿½Ä»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Wake ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+set "PYTHON_EXE=python"
+if exist "%SERVER_DIR%\.venv\Scripts\python.exe" set "PYTHON_EXE=%SERVER_DIR%\.venv\Scripts\python.exe"
+start "JARVIS-Backend" /min cmd /c "cd /d "%SERVER_DIR%" && "!PYTHON_EXE!" -m uvicorn main:app --host 127.0.0.1 --port %BACKEND_PORT% >>"%SERVER_DIR%\backend.log" 2>&1"
+call :wait_port %BACKEND_PORT% 90
 if "!PORT_IN_USE!"=="1" (
-    echo [Ìø¹ý] ºó¶ËÒÑÔÚ %BACKEND_PORT% ÔËÐÐ
+    echo [ï¿½ï¿½ï¿½ï¿½] ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ) else (
-    echo [Æô¶¯] ºó¶Ë http://127.0.0.1:%BACKEND_PORT% ...
-    rem ±ØÐëÓÃÏîÄ¿ venv µÄ½âÊÍÆ÷£ºElectron ÓÃµÄÒ²ÊÇËü¡£
-    rem Âã `python` ¿ÉÄÜ½âÎöµ½ÁíÒ»¸öÈ±ÉÙÒÀÀµµÄ»·¾³£¬
-    rem ä¯ÀÀÆ÷¹¤¾ßÔøÒò´Ë¾²Ä¬Ê§Ð§¹ýÒ»´Î¡£
-    set "PYTHON_EXE=python"
-    if exist "%SERVER_DIR%\.venv\Scripts\python.exe" set "PYTHON_EXE=%SERVER_DIR%\.venv\Scripts\python.exe"
-    start "JARVIS-Backend" /min cmd /c "cd /d "%SERVER_DIR%" && "!PYTHON_EXE!" -m uvicorn main:app --host 127.0.0.1 --port %BACKEND_PORT% >>"%SERVER_DIR%\backend.log" 2>&1"
-    call :wait_port %BACKEND_PORT% 90
-    if "!PORT_IN_USE!"=="1" (
-        echo [Íê³É] ºó¶ËÒÑ¾ÍÐ÷
-    ) else (
-        echo [Ê§°Ü] ºó¶ËÆô¶¯³¬Ê±£¬Çë²é¿´ server\backend.log
-    )
+    echo [Ê§ï¿½ï¿½] ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ë¿´ server\backend.log
 )
 echo.
 
-rem ---------- 2. Ç°¶Ë£¨Vite dev server£©----------
-call :port_in_use %FRONTEND_PORT%
-if "!PORT_IN_USE!"=="1" (
-    echo [Ìø¹ý] Ç°¶ËÒÑÔÚ %FRONTEND_PORT% ÔËÐÐ
-) else (
-    echo [Æô¶¯] Ç°¶Ë http://localhost:%FRONTEND_PORT% ...
-    if not exist "%PROJECT_DIR%node_modules\.bin\vite.cmd" (
-        echo [Ê§°Ü] Î´ÕÒµ½ node_modules\.bin\vite.cmd£¬ÇëÏÈÖ´ÐÐ pnpm install
-        goto :done
-    )
-    start "JARVIS-Frontend" /min cmd /c "cd /d "%PROJECT_DIR%" && "%PROJECT_DIR%node_modules\.bin\vite.cmd" >>"%PROJECT_DIR%frontend.log" 2>&1"
-    call :wait_port %FRONTEND_PORT% 60
-    if "!PORT_IN_USE!"=="1" (
-        echo [Íê³É] Ç°¶ËÒÑ¾ÍÐ÷
-    ) else (
-        echo [Ê§°Ü] Ç°¶ËÆô¶¯³¬Ê±£¬Çë²é¿´ frontend.log
-    )
-)
-echo.
-
-rem ---------- 3. ×ÀÃæ¶Ë£¨Electron£©----------
-if "%START_ELECTRON%"=="0" goto :done
-echo [Æô¶¯] JARVIS ×ÀÃæ¶Ë ...
-if not exist "%PROJECT_DIR%node_modules\.bin\electron.cmd" (
-    echo [Ê§°Ü] Î´ÕÒµ½ node_modules\.bin\electron.cmd£¬ÇëÏÈÖ´ÐÐ pnpm install
+rem ---------- 2. Ç°ï¿½Ë£ï¿½Vite dev server ----------
+echo [2/3] ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ http://localhost:%FRONTEND_PORT% ...
+if not exist "%PROJECT_DIR%node_modules\.bin\vite.cmd" (
+    echo [Ê§ï¿½ï¿½] Î´ï¿½Òµï¿½ node_modules\.bin\vite.cmdï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½ pnpm install
     goto :done
 )
-rem ×ÀÃæ¶Ë»á×ÔÐÐÀ­Æðºó¶Ë£¨¶Ë¿Ú±»Õ¼ÓÃÊ±Ìø¹ý£©£¬´°¿ÚÔòÁ¬½Ó Vite dev server¡£
+start "JARVIS-Frontend" /min cmd /c "cd /d "%PROJECT_DIR%" && "%PROJECT_DIR%node_modules\.bin\vite.cmd" >>"%PROJECT_DIR%frontend.log" 2>&1"
+call :wait_port %FRONTEND_PORT% 60
+if "!PORT_IN_USE!"=="1" (
+    echo [ï¿½ï¿½ï¿½ï¿½] Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+) else (
+    echo [Ê§ï¿½ï¿½] Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ë¿´ frontend.log
+)
+echo.
+
+rem ---------- 3. ï¿½ï¿½ï¿½ï¿½Ë£ï¿½Electron ----------
+if "%START_ELECTRON%"=="0" goto :done
+echo [3/3] ï¿½ï¿½ï¿½ï¿½ JARVIS ï¿½ï¿½ï¿½ï¿½ï¿½ ...
+if not exist "%PROJECT_DIR%node_modules\.bin\electron.cmd" (
+    echo [Ê§ï¿½ï¿½] Î´ï¿½Òµï¿½ node_modules\.bin\electron.cmdï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½ pnpm install
+    goto :done
+)
 start "JARVIS-Desktop" cmd /c "cd /d "%PROJECT_DIR%" && "%PROJECT_DIR%node_modules\.bin\electron.cmd" ."
 
 :done
 echo.
 echo ============================================================
-echo    Æô¶¯Íê³É
-echo    Ç°¶Ë£ºhttp://localhost:%FRONTEND_PORT%
-echo    ºó¶Ë£ºhttp://127.0.0.1:%BACKEND_PORT%
+echo    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+echo    Ç°ï¿½Ë£ï¿½http://localhost:%FRONTEND_PORT%
+echo    ï¿½ï¿½Ë£ï¿½http://127.0.0.1:%BACKEND_PORT%
 echo ------------------------------------------------------------
-echo    Í£Ö¹ËùÓÐ·þÎñÇëÔËÐÐ£ºÍ£Ö¹¼ÖÎ¬Ë¹.bat
-echo    ±¾´°¿Ú¿É¹Ø±Õ£¬·þÎñÔÚºóÌ¨¼ÌÐøÔËÐÐ¡£
+echo    Ö±ï¿½Ó¶ï¿½ï¿½Åµï¿½ï¿½ï¿½Ëµï¿½ï¿½ï¿½ï¿½Ã¼ï¿½Î¬Ë¹ï¿½ï¿½ï¿½ï¿½ï¿½É£ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½Ë·ç°´Å¥ï¿½ï¿½
+echo    Í£Ö¹ï¿½ï¿½ï¿½Ð·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½Í£Ö¹ï¿½ï¿½Î¬Ë¹.bat
 echo ============================================================
 echo.
 endlocal
@@ -100,27 +107,27 @@ exit /b 0
 
 :usage
 echo.
-echo J.A.R.V.I.S. Æô¶¯Æ÷
+echo J.A.R.V.I.S. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 echo.
-echo   Æô¶¯¼ÖÎ¬Ë¹.bat                Æô¶¯ºó¶Ë + Ç°¶Ë + ×ÀÃæ¶Ë
-echo   Æô¶¯¼ÖÎ¬Ë¹.bat --no-electron  Ö»Æô¶¯ºó¶Ë + Ç°¶Ë
-echo   Æô¶¯¼ÖÎ¬Ë¹.bat --help         ÏÔÊ¾±¾°ïÖú
+echo   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬Ë¹.bat                ï¿½ï¿½ï¿½ + Ç°ï¿½ï¿½ + ï¿½ï¿½ï¿½ï¿½ï¿½
+echo   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬Ë¹.bat --no-electron  Ö»ï¿½ï¿½ï¿½ï¿½ + Ç°ï¿½ï¿½
+echo   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬Ë¹.bat --help         ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 echo.
-echo   Í£Ö¹£ºÍ£Ö¹¼ÖÎ¬Ë¹.bat
+echo   Í£Ö¹ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½Í£Ö¹ï¿½ï¿½Î¬Ë¹.bat
 echo.
 endlocal
 exit /b 0
 
-rem ===================== ×Ó¹ý³Ì =====================
+rem ===================== ï¿½Ó¹ï¿½ï¿½ï¿½ =====================
 
-rem ¼ì²â¶Ë¿ÚÊÇ·ñ´¦ÓÚ LISTENING£¬½á¹ûÐ´Èë PORT_IN_USE(1/0)
+rem ï¿½ï¿½Ñ¯ï¿½Ë¿ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ LISTENINGï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ PORT_IN_USE(1/0)
 :port_in_use
 set "PORT_IN_USE=0"
 netstat -ano 2>nul | findstr ":%~1 " | findstr "LISTENING" >nul 2>&1
 if not errorlevel 1 set "PORT_IN_USE=1"
 exit /b 0
 
-rem ÂÖÑ¯µÈ´ý¶Ë¿Ú¾ÍÐ÷£¬²ÎÊý£º¶Ë¿Ú ×î´óÃëÊý£»½á¹ûÐ´Èë PORT_IN_USE(1/0)
+rem ï¿½ï¿½Ñ¯ï¿½È´ï¿½ï¿½Ë¿Ú¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ PORT_IN_USE(1/0)
 :wait_port
 set "PORT_IN_USE=0"
 for /l %%i in (1,1,%~2) do (
@@ -130,5 +137,13 @@ for /l %%i in (1,1,%~2) do (
         exit /b 0
     )
     ping -n 2 127.0.0.1 >nul 2>&1
+)
+exit /b 0
+
+rem É±ï¿½ï¿½Õ¼ï¿½ï¿½Ö¸ï¿½ï¿½ï¿½Ë¿ÚµÄ½ï¿½ï¿½Ì£ï¿½%~1 = ï¿½Ë¿Ú£ï¿½%~2 = ï¿½ï¿½Ê¾ï¿½ï¿½
+:kill_port
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":%~1 " ^| findstr "LISTENING"') do (
+    echo [ï¿½ï¿½ï¿½ï¿½] %~2 ï¿½Ë¿ï¿½ %~1 ï¿½ï¿½ PID %%a Õ¼ï¿½Ã£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    taskkill /PID %%a /F >nul 2>&1
 )
 exit /b 0
